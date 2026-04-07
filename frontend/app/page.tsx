@@ -1,17 +1,26 @@
 'use client';
 
-/**
- * Landing Page - Tactile Cyber-Brutalism Design
- */
-
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState, type MouseEvent, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading, login, signup } = useAuth();
   const router = useRouter();
+  const [isBowlPopping, setIsBowlPopping] = useState(false);
+  const [authModal, setAuthModal] = useState<'login' | 'signup' | null>(null);
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+
+  const [signupName, setSignupName] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -23,108 +32,350 @@ export default function HomePage() {
     }
   }, [isAuthenticated, user, isLoading, router]);
 
+  useEffect(() => {
+    if (!isBowlPopping) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsBowlPopping(false);
+    }, 380);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isBowlPopping]);
+
+  useEffect(() => {
+    if (!authModal) {
+      return;
+    }
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAuthModal(null);
+      }
+    };
+
+    window.addEventListener('keydown', onEscape);
+    return () => {
+      window.removeEventListener('keydown', onEscape);
+    };
+  }, [authModal]);
+
+  const openAuthModal = (type: 'login' | 'signup') => {
+    setAuthError('');
+    setAuthModal(type);
+  };
+
+  const closeAuthModal = () => {
+    if (authLoading) {
+      return;
+    }
+    setAuthModal(null);
+  };
+
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAuthError('');
+    setAuthLoading(true);
+
+    const result = await login(loginEmail, loginPassword);
+
+    if (!result.success) {
+      setAuthError(result.message);
+      setAuthLoading(false);
+      return;
+    }
+
+    if (!rememberMe) {
+      setLoginPassword('');
+    }
+
+    setAuthModal(null);
+    setAuthLoading(false);
+  };
+
+  const handleSignupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAuthError('');
+
+    if (signupPassword !== signupConfirmPassword) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      setAuthError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setAuthLoading(true);
+    const result = await signup(signupName, signupEmail, signupPassword);
+
+    if (!result.success) {
+      setAuthError(result.message);
+      setAuthLoading(false);
+      return;
+    }
+
+    setAuthModal(null);
+    setAuthLoading(false);
+  };
+
+  const triggerBowlPop = () => {
+    setIsBowlPopping(false);
+    window.requestAnimationFrame(() => {
+      setIsBowlPopping(true);
+    });
+  };
+
+  const handleBowlClick = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const distanceFromCenter = Math.hypot(event.clientX - centerX, event.clientY - centerY);
+    const activationRadius = Math.min(rect.width, rect.height) * 0.24;
+
+    if (distanceFromCenter <= activationRadius) {
+      triggerBowlPop();
+    }
+  };
+
+  const handleBowlKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      triggerBowlPop();
+    }
+  };
+
   if (isLoading) {
     return null;
   }
 
-  const features = [
+  const menuTiles = [
     {
-      icon: 'smartphone',
-      title: 'Easy Ordering',
-      description: 'Browse menu and place orders from your phone',
+      title: 'Pizza',
+      image:
+        'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=520&q=80',
     },
     {
-      icon: 'credit_card',
-      title: 'Digital Payments',
-      description: 'Pay securely with UPI, Card, or Wallet',
+      title: 'Burgers',
+      image:
+        'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=520&q=80',
     },
     {
-      icon: 'schedule',
-      title: 'Real-time Queue',
-      description: 'Track your order status in real-time',
+      title: 'Sushi',
+      image:
+        'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=520&q=80',
     },
     {
-      icon: 'notifications_active',
-      title: 'Token System',
-      description: 'Get notified when your order is ready',
+      title: 'Vegan',
+      image:
+        'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=520&q=80',
+    },
+    {
+      title: 'Desserts',
+      image:
+        'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=520&q=80',
+    },
+    {
+      title: 'Drinks',
+      image:
+        'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=520&q=80',
     },
   ];
 
+  const cravingItems = Array.from({ length: 6 }, () => 'What are you craving today?');
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="py-6 px-4 border-b border-outline-variant/20">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-500 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(0,229,255,0.4)]">
-              <span className="material-symbols-outlined text-2xl text-background">restaurant</span>
-            </div>
-            <span className="font-headline font-bold text-2xl text-on-surface">
-              Smart<span className="text-cyan-400">Canteen</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="px-5 py-2.5 text-on-surface-variant hover:text-on-surface font-headline font-bold transition-colors">
-              Login
-            </Link>
-            <Link href="/signup" className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-400 text-background font-headline font-bold rounded-xl push-switch hover:shadow-[0_0_20px_rgba(0,229,255,0.4)] transition-all">
+    <div className="eat-shell">
+      <main className="eat-frame">
+        <header className="eat-nav">
+          <Link href="/" className="eat-brand">
+            Deque
+          </Link>
+
+          <nav className="eat-links" aria-label="Primary">
+            <Link href="/" className="eat-link">Home</Link>
+            <button type="button" className="eat-link eat-link-btn" onClick={() => openAuthModal('signup')}>
+              Order
+            </button>
+            <Link href="/queue" className="eat-link">Contact Us</Link>
+          </nav>
+
+          <div className="eat-auth-actions">
+            <button type="button" className="eat-auth-btn eat-auth-btn-secondary" onClick={() => openAuthModal('login')}>
+              Sign In
+            </button>
+            <button type="button" className="eat-auth-btn eat-auth-btn-primary" onClick={() => openAuthModal('signup')}>
               Sign Up
-            </Link>
+            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Hero Section */}
-      <main className="max-w-7xl mx-auto px-4 py-20 sm:py-28">
-        <div className="text-center">
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-headline font-bold text-on-surface leading-tight">
-            Skip the Queue,
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-tertiary drop-shadow-[0_0_20px_rgba(0,229,255,0.4)]">
-              Not Your Meal
-            </span>
+        <section className="eat-hero" aria-label="Hero">
+          <h1 className="eat-title">
+            <span className="eat-title-top">ORDER</span>
+            <span className="eat-title-bottom">&amp; GO</span>
           </h1>
-          <p className="mt-8 text-xl text-on-surface-variant max-w-2xl mx-auto">
-            Order food from your college canteen, pay digitally, and get notified
-            when your order is ready. No more waiting in long queues!
-          </p>
-          <div className="mt-12 flex justify-center gap-4">
-            <Link href="/signup" className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-cyan-400 text-background font-headline font-bold text-lg rounded-xl push-switch hover:shadow-[0_0_25px_rgba(0,229,255,0.5)] transition-all flex items-center gap-2">
-              <span className="material-symbols-outlined">rocket_launch</span>
-              Get Started
-            </Link>
-            <Link href="/queue" className="px-8 py-4 bg-surface-container-low hover:bg-surface-container border border-outline-variant/20 text-on-surface font-headline font-bold text-lg rounded-xl push-switch transition-all flex items-center gap-2">
-              <span className="material-symbols-outlined">monitor</span>
-              View Queue
-            </Link>
+
+          <div
+            className={`eat-bowl-wrap eat-bowl-wrap-clickable ${isBowlPopping ? 'eat-bowl-pop' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-label="Pop bowl effect"
+            onClick={handleBowlClick}
+            onKeyDown={handleBowlKeyDown}
+          >
+            <img
+              className="eat-bowl"
+              src="https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1300&q=80"
+              alt="Fresh salad bowl"
+            />
+            <span className="eat-bowl-center-hit" aria-hidden="true" />
           </div>
-        </div>
 
-        {/* Features */}
-        <div className="mt-28 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature) => (
-            <div
-              key={feature.title}
-              className="bg-surface-container-low rounded-2xl p-6 extruded-card border border-white/5 hover:border-cyan-400/30 transition-all group"
-            >
-              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <span className="material-symbols-outlined text-2xl text-primary">{feature.icon}</span>
-              </div>
-              <h3 className="text-lg font-headline font-bold text-on-surface mb-2">
-                {feature.title}
-              </h3>
-              <p className="text-on-surface-variant text-sm">
-                {feature.description}
-              </p>
+          <p className="eat-hero-copy">
+            We appreciate your trust greatly. Our clients choose us and our
+            products. Dicta sunt explicabo.
+          </p>
+        </section>
+
+        <section className="eat-question" aria-label="What are you craving today marquee">
+          <div className="eat-question-lane">
+            <div className="eat-marquee-track">
+              {[...cravingItems, ...cravingItems].map((item, index) => (
+                <span className="eat-marquee-item" key={`${item}-${index}`}>
+                  {item}
+                  <span className="eat-marquee-sep" aria-hidden="true">*</span>
+                </span>
+              ))}
             </div>
-          ))}
-        </div>
-      </main>
+          </div>
+        </section>
 
-      {/* Footer */}
-      <footer className="py-8 text-center text-on-surface-variant border-t border-outline-variant/20">
-        <p className="text-sm font-label">&copy; 2026 SmartCanteen. Built for college canteens.</p>
-      </footer>
+        <section className="eat-strip">
+          <p className="eat-strip-title">WE&apos;VE GOT IT ALL!</p>
+        </section>
+
+        <section className="eat-grid" aria-label="Categories">
+          {menuTiles.map((tile) => (
+            <button
+              type="button"
+              className="eat-tile eat-tile-btn"
+              key={tile.title}
+              onClick={() => openAuthModal('signup')}
+            >
+              <img src={tile.image} alt={tile.title} className="eat-tile-image" />
+              <span className="eat-tile-label">{tile.title}</span>
+            </button>
+          ))}
+        </section>
+
+        {authModal && (
+          <div className="eat-modal-overlay" onClick={closeAuthModal} role="presentation">
+            <section className="auth-popup eat-modal-popup" aria-label="Authentication popup" onClick={(event) => event.stopPropagation()}>
+              <button type="button" className="auth-close eat-modal-close" onClick={closeAuthModal} aria-label="Close popup">
+                x
+              </button>
+
+              <div className="auth-header">
+                <p className="auth-brand">Deque</p>
+                <h2 className="auth-title">{authModal === 'login' ? 'Log in' : 'Sign up'}</h2>
+                <p className="auth-subtitle">
+                  {authModal === 'login'
+                    ? 'Sign in to continue your orders and queue tracking.'
+                    : 'Create your account and start ordering faster.'}
+                </p>
+              </div>
+
+              {authError && <p className="auth-error">{authError}</p>}
+
+              {authModal === 'login' ? (
+                <form onSubmit={handleLoginSubmit} className="auth-form">
+                  <input
+                    type="email"
+                    value={loginEmail}
+                    onChange={(event) => setLoginEmail(event.target.value)}
+                    placeholder="E-mail"
+                    required
+                    className="auth-input"
+                  />
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(event) => setLoginPassword(event.target.value)}
+                    placeholder="Password"
+                    required
+                    className="auth-input"
+                  />
+                  <label className="auth-check">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                    />
+                    <span>Keep me signed in</span>
+                  </label>
+                  <button type="submit" disabled={authLoading} className="auth-submit">
+                    {authLoading ? 'Signing in...' : 'Sign in'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleSignupSubmit} className="auth-form">
+                  <input
+                    type="text"
+                    value={signupName}
+                    onChange={(event) => setSignupName(event.target.value)}
+                    placeholder="Full name"
+                    required
+                    className="auth-input"
+                  />
+                  <input
+                    type="email"
+                    value={signupEmail}
+                    onChange={(event) => setSignupEmail(event.target.value)}
+                    placeholder="E-mail"
+                    required
+                    className="auth-input"
+                  />
+                  <input
+                    type="password"
+                    value={signupPassword}
+                    onChange={(event) => setSignupPassword(event.target.value)}
+                    placeholder="Password"
+                    required
+                    className="auth-input"
+                  />
+                  <input
+                    type="password"
+                    value={signupConfirmPassword}
+                    onChange={(event) => setSignupConfirmPassword(event.target.value)}
+                    placeholder="Confirm password"
+                    required
+                    className="auth-input"
+                  />
+                  <button type="submit" disabled={authLoading} className="auth-submit">
+                    {authLoading ? 'Creating account...' : 'Sign up'}
+                  </button>
+                </form>
+              )}
+
+              <p className="auth-footer-text">
+                {authModal === 'signup' ? 'Already have an account? ' : 'New here? '}
+                <button
+                  type="button"
+                  className="auth-link-inline eat-inline-link-btn"
+                  onClick={() => openAuthModal(authModal === 'signup' ? 'login' : 'signup')}
+                >
+                  {authModal === 'signup' ? 'Sign in' : 'Sign up'}
+                </button>
+              </p>
+            </section>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
