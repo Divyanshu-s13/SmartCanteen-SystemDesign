@@ -250,6 +250,35 @@ export default function HomePage() {
             </button>
           ))}
         </section>
+
+        <section id="contact" className="eat-contact" aria-label="Contact us">
+          <div className="eat-contact-card">
+            <p className="eat-contact-kicker">Contact Us</p>
+            <h2 className="eat-contact-title">We are here to help.</h2>
+            <p className="eat-contact-copy">
+              Reach out for bulk orders, feedback, or support. Our canteen desk responds quickly during campus hours.
+            </p>
+
+            <div className="eat-contact-grid">
+              <a className="eat-contact-item" href="tel:+919000000000">
+                <span className="eat-contact-label">Phone</span>
+                <span className="eat-contact-value">+91 90000 00000</span>
+              </a>
+              <a className="eat-contact-item" href="mailto:support@smartcanteen.com">
+                <span className="eat-contact-label">Email</span>
+                <span className="eat-contact-value">support@smartcanteen.com</span>
+              </a>
+              <div className="eat-contact-item">
+                <span className="eat-contact-label">Hours</span>
+                <span className="eat-contact-value">Mon-Sat, 8:00 AM - 8:00 PM</span>
+              </div>
+              <div className="eat-contact-item">
+                <span className="eat-contact-label">Location</span>
+                <span className="eat-contact-value">Main Campus Canteen Block</span>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       {authModal && (

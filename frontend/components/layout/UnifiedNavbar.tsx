@@ -94,7 +94,7 @@ export function UnifiedNavbar() {
         >
           Order
         </button>
-        <Link href="/queue" className="eat-link">Contact Us</Link>
+        <Link href="/#contact" className="eat-link">Contact Us</Link>
       </nav>
 
       <div className="eat-auth-actions">
