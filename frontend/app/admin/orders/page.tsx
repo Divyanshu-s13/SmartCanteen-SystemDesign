@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { orderApi } from '@/services/api';
 import { socketService } from '@/services/socket';
-import { Navbar } from '@/components/layout';
+import { AdminWarmHeader } from '@/components/layout';
 import { Spinner } from '@/components/ui';
 import { formatPrice, formatDateTime, getStatusLabel } from '@/lib/utils';
 import type { Order, OrderStatus } from '@/types';
@@ -102,17 +102,17 @@ export default function AdminOrdersPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ready':
-        return 'text-tertiary bg-tertiary/10 border-tertiary/30';
+        return 'text-emerald-700 bg-emerald-50 border-emerald-200';
       case 'preparing':
-        return 'text-primary bg-primary/10 border-primary/30';
+        return 'text-orange-700 bg-orange-50 border-orange-200';
       case 'paid':
-        return 'text-secondary bg-secondary/10 border-secondary/30';
+        return 'text-amber-700 bg-amber-50 border-amber-200';
       case 'completed':
-        return 'text-tertiary bg-tertiary/10 border-tertiary/30';
+        return 'text-emerald-700 bg-emerald-50 border-emerald-200';
       case 'cancelled':
-        return 'text-error bg-error/10 border-error/30';
+        return 'text-red-700 bg-red-50 border-red-200';
       default:
-        return 'text-slate-400 bg-slate-400/10 border-slate-400/30';
+        return 'text-slate-600 bg-slate-50 border-slate-200';
     }
   };
 
@@ -131,24 +131,23 @@ export default function AdminOrdersPage() {
 
   if (authLoading || !isAuthenticated || user?.role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#ece9e3]">
         <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className="min-h-screen bg-[#ece9e3] text-[#2f3633]">
+      <AdminWarmHeader />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-headline font-bold text-on-surface">
+            <h1 className="text-3xl font-bold text-[#313835]">
               All Orders
             </h1>
-            <p className="text-sm text-on-surface-variant font-label uppercase tracking-widest">
+            <p className="text-sm uppercase tracking-[0.2em] text-[#6f7571]">
               View and manage all orders
             </p>
           </div>
@@ -156,7 +155,7 @@ export default function AdminOrdersPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2.5 bg-surface-container-low rounded-xl border border-outline-variant/20 text-on-surface font-label focus:outline-none focus:border-cyan-400/50"
+              className="rounded-xl border border-[#ddd3c7] bg-white px-4 py-2.5 text-[#313835] focus:border-[#ee4a21] focus:outline-none"
             >
               {statusOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -165,7 +164,7 @@ export default function AdminOrdersPage() {
             <button
               onClick={loadOrders}
               disabled={isLoading}
-              className="px-4 py-2.5 bg-surface-container-low hover:bg-surface-container border border-outline-variant/20 rounded-xl push-switch flex items-center gap-2 text-on-surface-variant disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl border border-[#ddd3c7] bg-white px-4 py-2.5 text-[#4f5854] transition hover:border-[#ee4a21] hover:text-[#8a3c2d] disabled:opacity-50"
             >
               <span className={`material-symbols-outlined text-xl ${isLoading ? 'animate-spin' : ''}`}>refresh</span>
               Refresh
@@ -178,62 +177,62 @@ export default function AdminOrdersPage() {
             <Spinner size="lg" />
           </div>
         ) : orders.length > 0 ? (
-          <div className="bg-surface-container-low rounded-2xl overflow-hidden extruded-card border border-white/5">
+          <div className="overflow-hidden rounded-2xl border border-[#ddd3c7] bg-white">
             <table className="min-w-full">
-              <thead className="bg-surface-container">
+              <thead className="bg-[#f7f4ee]">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Token
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Items
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Total
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Time
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-right text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/20">
+              <tbody className="divide-y divide-[#eee6db]">
                 {orders.map((order) => {
                   const action = getActionButton(order.status);
                   return (
-                    <tr key={order.id} className="hover:bg-surface-container/50 transition-colors">
+                    <tr key={order.id} className="transition-colors hover:bg-[#fbf8f3]">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-2xl font-headline font-bold text-primary drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]">
+                        <span className="text-2xl font-bold text-[#ee4a21]">
                           #{order.tokenNumber}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-on-surface flex items-center gap-2">
-                          <span className="material-symbols-outlined text-lg text-slate-600">receipt</span>
+                        <div className="flex items-center gap-2 text-sm text-[#313835]">
+                          <span className="material-symbols-outlined text-lg text-[#7a817c]">receipt</span>
                           {order.items?.length || 0} items
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-headline font-bold text-cyan-400">
+                      <td className="px-6 py-4 whitespace-nowrap font-bold text-[#ee4a21]">
                         {formatPrice(order.totalPrice)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-widest border ${getStatusColor(order.status)}`}>
+                        <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getStatusColor(order.status)}`}>
                           {getStatusLabel(order.status)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-xs text-on-surface-variant font-label uppercase tracking-widest">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs uppercase tracking-[0.16em] text-[#6f7571]">
                         {formatDateTime(order.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         {action && (
                           <button
                             onClick={() => handleUpdateStatus(order.id, nextStatus[order.status])}
-                            className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-400 text-background font-headline font-bold text-xs rounded-xl push-switch hover:shadow-[0_0_15px_rgba(0,229,255,0.4)] transition-all flex items-center gap-2 ml-auto"
+                            className="ml-auto flex items-center gap-2 rounded-xl bg-[#ee4a21] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#d9441d]"
                           >
                             <span className="material-symbols-outlined text-sm">{action.icon}</span>
                             {action.label}
@@ -247,12 +246,12 @@ export default function AdminOrdersPage() {
             </table>
           </div>
         ) : (
-          <div className="bg-surface-container-low rounded-2xl p-12 text-center extruded-card border border-white/5">
-            <span className="material-symbols-outlined text-6xl text-slate-600 mb-4">inbox</span>
-            <h3 className="text-xl font-headline font-bold text-on-surface mb-2">
+          <div className="rounded-2xl border border-[#ddd3c7] bg-white p-12 text-center">
+            <span className="material-symbols-outlined mb-4 text-6xl text-[#7a817c]">inbox</span>
+            <h3 className="mb-2 text-xl font-bold text-[#313835]">
               No orders found
             </h3>
-            <p className="text-on-surface-variant">
+            <p className="text-[#6f7571]">
               {statusFilter ? 'Try changing the status filter' : 'Orders will appear here when placed'}
             </p>
           </div>

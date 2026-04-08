@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { menuApi } from '@/services/api';
-import { Navbar } from '@/components/layout';
+import { AdminWarmHeader } from '@/components/layout';
 import { Spinner } from '@/components/ui';
 import { formatPrice, getCategoryLabel, cn } from '@/lib/utils';
 import type { MenuItem, MenuCategory } from '@/types';
@@ -129,30 +129,29 @@ export default function AdminMenuPage() {
 
   if (authLoading || !isAuthenticated || user?.role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#ece9e3]">
         <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className="min-h-screen bg-[#ece9e3] text-[#2f3633]">
+      <AdminWarmHeader />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-headline font-bold text-on-surface">
+            <h1 className="text-3xl font-bold text-[#313835]">
               Menu Management
             </h1>
-            <p className="text-sm text-on-surface-variant font-label uppercase tracking-widest">
+            <p className="text-sm uppercase tracking-[0.2em] text-[#6f7571]">
               Add, edit, or remove menu items
             </p>
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="px-5 py-3 bg-gradient-to-r from-cyan-500 to-cyan-400 text-background font-headline font-bold rounded-xl push-switch hover:shadow-[0_0_20px_rgba(0,229,255,0.4)] transition-all flex items-center gap-2"
+            className="flex items-center gap-2 rounded-md bg-[#ee4a21] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#d9441d]"
           >
             <span className="material-symbols-outlined">add</span>
             Add Item
@@ -164,67 +163,67 @@ export default function AdminMenuPage() {
             <Spinner size="lg" />
           </div>
         ) : (
-          <div className="bg-surface-container-low rounded-2xl overflow-hidden extruded-card border border-white/5">
+          <div className="overflow-hidden rounded-2xl border border-[#ddd3c7] bg-white">
             <table className="min-w-full">
-              <thead className="bg-surface-container">
+              <thead className="bg-[#f7f4ee]">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Item
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Category
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Price
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-left text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                  <th className="px-6 py-4 text-right text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/20">
+              <tbody className="divide-y divide-[#eee6db]">
                 {items.map((item) => (
                   <tr key={item.id} className={cn(
-                    'hover:bg-surface-container/50 transition-colors',
+                    'transition-colors hover:bg-[#fbf8f3]',
                     !item.isAvailable && 'opacity-50'
                   )}>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-headline font-bold text-on-surface">
+                        <p className="font-bold text-[#313835]">
                           {item.name}
                         </p>
-                        <p className="text-sm text-on-surface-variant">
+                        <p className="text-sm text-[#6f7571]">
                           {item.description}
                         </p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-label uppercase tracking-widest rounded-full border border-primary/30">
+                      <span className="rounded-full border border-[#f5c2b3] bg-[#fff2ed] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[#8a3c2d]">
                         {getCategoryLabel(item.category)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-headline font-bold text-cyan-400">
+                    <td className="px-6 py-4 font-bold text-[#ee4a21]">
                       {formatPrice(item.price)}
                     </td>
                     <td className="px-6 py-4">
                       <button
                         onClick={() => handleToggleAvailability(item.id)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg push-switch ${
+                        className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${
                           item.isAvailable 
-                            ? 'bg-tertiary/10 border border-tertiary/30' 
-                            : 'bg-surface-container border border-outline-variant/20'
+                            ? 'border border-emerald-200 bg-emerald-50' 
+                            : 'border border-[#ddd3c7] bg-[#f8f5ef]'
                         }`}
                       >
                         <span className={`material-symbols-outlined text-lg ${
-                          item.isAvailable ? 'text-tertiary' : 'text-slate-600'
+                          item.isAvailable ? 'text-emerald-600' : 'text-[#7a817c]'
                         }`}>
                           {item.isAvailable ? 'toggle_on' : 'toggle_off'}
                         </span>
-                        <span className={`text-xs font-label uppercase tracking-widest ${
-                          item.isAvailable ? 'text-tertiary' : 'text-slate-600'
+                        <span className={`text-xs uppercase tracking-[0.2em] ${
+                          item.isAvailable ? 'text-emerald-700' : 'text-[#7a817c]'
                         }`}>
                           {item.isAvailable ? 'Available' : 'Unavailable'}
                         </span>
@@ -234,15 +233,15 @@ export default function AdminMenuPage() {
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => handleOpenModal(item)}
-                          className="p-2 bg-surface-container hover:bg-surface-container-high rounded-lg push-switch"
+                          className="rounded-lg border border-[#ddd3c7] bg-[#f8f5ef] p-2 hover:border-[#ee4a21]"
                         >
-                          <span className="material-symbols-outlined text-on-surface-variant">edit</span>
+                          <span className="material-symbols-outlined text-[#5f6763]">edit</span>
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="p-2 bg-error/10 hover:bg-error/20 rounded-lg push-switch"
+                          className="rounded-lg border border-red-200 bg-red-50 p-2 hover:bg-red-100"
                         >
-                          <span className="material-symbols-outlined text-error">delete</span>
+                          <span className="material-symbols-outlined text-red-600">delete</span>
                         </button>
                       </div>
                     </td>
@@ -258,18 +257,18 @@ export default function AdminMenuPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div 
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#312820]/45 backdrop-blur-sm"
             onClick={() => setShowModal(false)}
           ></div>
           
-          <div className="relative bg-surface-container-low rounded-2xl p-8 max-w-md w-full mx-4 extruded-card border border-white/10">
-            <h2 className="text-2xl font-headline font-bold text-on-surface mb-6">
+          <div className="relative mx-4 w-full max-w-md rounded-2xl border border-[#ddd3c7] bg-white p-8">
+            <h2 className="mb-6 text-2xl font-bold text-[#313835]">
               {editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">
+                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                   Name
                 </label>
                 <input
@@ -277,24 +276,24 @@ export default function AdminMenuPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  className="w-full px-4 py-3 bg-surface-container rounded-xl border border-outline-variant/20 text-on-surface placeholder:text-slate-600 focus:outline-none focus:border-cyan-400/50 focus:shadow-[0_0_10px_rgba(0,229,255,0.2)]"
+                  className="w-full rounded-xl border border-[#ddd3c7] bg-[#faf7f1] px-4 py-3 text-[#313835] placeholder:text-[#9aa09d] focus:border-[#ee4a21] focus:outline-none"
                 />
               </div>
               
               <div>
-                <label className="block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">
+                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                   Description
                 </label>
                 <input
                   type="text"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-3 bg-surface-container rounded-xl border border-outline-variant/20 text-on-surface placeholder:text-slate-600 focus:outline-none focus:border-cyan-400/50 focus:shadow-[0_0_10px_rgba(0,229,255,0.2)]"
+                  className="w-full rounded-xl border border-[#ddd3c7] bg-[#faf7f1] px-4 py-3 text-[#313835] placeholder:text-[#9aa09d] focus:border-[#ee4a21] focus:outline-none"
                 />
               </div>
               
               <div>
-                <label className="block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">
+                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                   Price (₹)
                 </label>
                 <input
@@ -304,18 +303,18 @@ export default function AdminMenuPage() {
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   required
-                  className="w-full px-4 py-3 bg-surface-container rounded-xl border border-outline-variant/20 text-on-surface placeholder:text-slate-600 focus:outline-none focus:border-cyan-400/50 focus:shadow-[0_0_10px_rgba(0,229,255,0.2)]"
+                  className="w-full rounded-xl border border-[#ddd3c7] bg-[#faf7f1] px-4 py-3 text-[#313835] placeholder:text-[#9aa09d] focus:border-[#ee4a21] focus:outline-none"
                 />
               </div>
               
               <div>
-                <label className="block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">
+                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#6f7571]">
                   Category
                 </label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value as MenuCategory })}
-                  className="w-full px-4 py-3 bg-surface-container rounded-xl border border-outline-variant/20 text-on-surface focus:outline-none focus:border-cyan-400/50 focus:shadow-[0_0_10px_rgba(0,229,255,0.2)]"
+                  className="w-full rounded-xl border border-[#ddd3c7] bg-[#faf7f1] px-4 py-3 text-[#313835] focus:border-[#ee4a21] focus:outline-none"
                 >
                   {categories.map((cat) => (
                     <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -324,7 +323,7 @@ export default function AdminMenuPage() {
               </div>
 
               {error && (
-                <div className="bg-error/10 border border-error/30 text-error px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   <span className="material-symbols-outlined text-sm">error</span>
                   {error}
                 </div>
@@ -334,14 +333,14 @@ export default function AdminMenuPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 px-6 bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-headline font-bold rounded-xl push-switch"
+                  className="flex-1 rounded-xl border border-[#d4cabd] bg-[#f8f5ef] px-6 py-3 font-semibold text-[#4f5854] hover:border-[#ee4a21] hover:text-[#8a3c2d]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-3 px-6 bg-gradient-to-r from-cyan-500 to-cyan-400 text-background font-headline font-bold rounded-xl push-switch hover:shadow-[0_0_20px_rgba(0,229,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#ee4a21] px-6 py-3 font-bold text-white transition hover:bg-[#d9441d] disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <Spinner size="sm" />
