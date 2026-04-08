@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { UnifiedNavbar } from '@/components/layout/UnifiedNavbar';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -26,7 +27,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-body bg-background text-on-surface min-h-screen`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <header className="global-nav-wrap">
+            <div className="global-nav-inner">
+              <UnifiedNavbar />
+            </div>
+          </header>
+          {children}
+        </Providers>
       </body>
     </html>
   );

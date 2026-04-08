@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState, type MouseEvent, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { navigateWithTransition } from '../lib/navigation';
 
 export default function HomePage() {
-  const { isAuthenticated, user, isLoading, login, signup } = useAuth();
+  const { isAuthenticated, isLoading, login, signup } = useAuth();
   const router = useRouter();
   const [isBowlPopping, setIsBowlPopping] = useState(false);
+  const [redirectAfterAuth, setRedirectAfterAuth] = useState<string | null>(null);
   const [authModal, setAuthModal] = useState<'login' | 'signup' | null>(null);
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -21,16 +23,6 @@ export default function HomePage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      if (user?.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
-    }
-  }, [isAuthenticated, user, isLoading, router]);
 
   useEffect(() => {
     if (!isBowlPopping) {
@@ -51,7 +43,7 @@ export default function HomePage() {
       return;
     }
 
-    const onEscape = (event: KeyboardEvent) => {
+    const onEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
         setAuthModal(null);
       }
@@ -62,6 +54,23 @@ export default function HomePage() {
       window.removeEventListener('keydown', onEscape);
     };
   }, [authModal]);
+
+  useEffect(() => {
+    const onAuthOpen = (event: Event) => {
+      const customEvent = event as CustomEvent<{ type: 'login' | 'signup'; redirectAfterAuth?: string | null }>;
+      const type = customEvent.detail?.type ?? 'login';
+      const nextRedirect = customEvent.detail?.redirectAfterAuth ?? null;
+
+      setRedirectAfterAuth(nextRedirect);
+      setAuthError('');
+      setAuthModal(type);
+    };
+
+    window.addEventListener('deque-auth-open', onAuthOpen as EventListener);
+    return () => {
+      window.removeEventListener('deque-auth-open', onAuthOpen as EventListener);
+    };
+  }, []);
 
   const openAuthModal = (type: 'login' | 'signup') => {
     setAuthError('');
@@ -75,12 +84,22 @@ export default function HomePage() {
     setAuthModal(null);
   };
 
+  const handleMenuClick = () => {
+    if (isAuthenticated) {
+      navigateWithTransition(() => router.push('/menu'));
+      return;
+    }
+
+    setRedirectAfterAuth('/menu');
+    openAuthModal('login');
+  };
+
   const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAuthError('');
     setAuthLoading(true);
 
-    const result = await login(loginEmail, loginPassword);
+    const result = await login(loginEmail, loginPassword, redirectAfterAuth ?? undefined);
 
     if (!result.success) {
       setAuthError(result.message);
@@ -92,6 +111,7 @@ export default function HomePage() {
       setLoginPassword('');
     }
 
+    setRedirectAfterAuth(null);
     setAuthModal(null);
     setAuthLoading(false);
   };
@@ -150,7 +170,13 @@ export default function HomePage() {
   };
 
   if (isLoading) {
-    return null;
+    return (
+      <div className="eat-shell">
+        <main className="eat-frame flex items-center justify-center">
+          <p className="text-[#8a3c2d] tracking-[0.12em] text-xs uppercase">Loading...</p>
+        </main>
+      </div>
+    );
   }
 
   const menuTiles = [
@@ -191,29 +217,6 @@ export default function HomePage() {
   return (
     <div className="eat-shell">
       <main className="eat-frame">
-        <header className="eat-nav">
-          <Link href="/" className="eat-brand">
-            Deque
-          </Link>
-
-          <nav className="eat-links" aria-label="Primary">
-            <Link href="/" className="eat-link">Home</Link>
-            <button type="button" className="eat-link eat-link-btn" onClick={() => openAuthModal('signup')}>
-              Order
-            </button>
-            <Link href="/queue" className="eat-link">Contact Us</Link>
-          </nav>
-
-          <div className="eat-auth-actions">
-            <button type="button" className="eat-auth-btn eat-auth-btn-secondary" onClick={() => openAuthModal('login')}>
-              Sign In
-            </button>
-            <button type="button" className="eat-auth-btn eat-auth-btn-primary" onClick={() => openAuthModal('signup')}>
-              Sign Up
-            </button>
-          </div>
-        </header>
-
         <section className="eat-hero" aria-label="Hero">
           <h1 className="eat-title">
             <span className="eat-title-top">ORDER</span>
@@ -259,7 +262,7 @@ export default function HomePage() {
           <p className="eat-strip-title">WE&apos;VE GOT IT ALL!</p>
         </section>
 
-        <section className="eat-grid" aria-label="Categories">
+        <section id="categories" className="eat-grid" aria-label="Categories">
           {menuTiles.map((tile) => (
             <button
               type="button"

@@ -23,7 +23,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  login: (email: string, password: string, redirectTo?: string) => Promise<{ success: boolean; message: string }>;
   signup: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   updateUser: (user: User) => void;
@@ -39,33 +39,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check token and load user on mount
   useEffect(() => {
     const initAuth = async () => {
-      const token = getToken();
-      const storedUser = getStoredUser() as User | null;
+      try {
+        const token = getToken();
+        const storedUser = getStoredUser() as User | null;
 
-      if (token && storedUser) {
-        // Verify token is still valid
-        const response = await authApi.verifyToken();
-        if (response.success && response.data) {
-          setUser(response.data);
-          setStoredUser(response.data);
+        if (token && storedUser) {
+          // Verify token is still valid
+          const response = await authApi.verifyToken();
+          if (response.success && response.data) {
+            setUser(response.data);
+            setStoredUser(response.data);
 
-          // Connect socket and authenticate
-          socketService.connect();
-          socketService.authenticate(token);
-        } else {
-          // Token invalid, clear storage
-          removeToken();
-          removeStoredUser();
+            // Connect socket and authenticate
+            socketService.connect();
+            socketService.authenticate(token);
+          } else {
+            // Token invalid, clear storage
+            removeToken();
+            removeStoredUser();
+          }
         }
+      } catch {
+        // If backend is temporarily unavailable, avoid blocking UI on a blank screen.
+        removeToken();
+        removeStoredUser();
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
 
     initAuth();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, redirectTo?: string) => {
     const response = await authApi.login({ email, password });
 
     if (response.success && response.data) {
@@ -78,8 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       socketService.connect();
       socketService.authenticate(token);
 
-      // Redirect based on role
-      if (user.role === 'admin') {
+      // Redirect target can be overridden by caller (e.g. landing menu flow)
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else if (user.role === 'admin') {
         router.push('/admin');
       } else {
         router.push('/dashboard');
