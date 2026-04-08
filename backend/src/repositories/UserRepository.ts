@@ -4,7 +4,8 @@
  * Implements IUserRepository interface
  */
 
-import { query } from '../config/database';
+import { Types } from 'mongoose';
+import { UserDocumentModel, UserDoc } from '../db/models';
 import { IUser, ICreateUserDTO, UserRole } from '../interfaces';
 import { IUserRepository } from '../interfaces/repositories';
 
@@ -13,138 +14,98 @@ export class UserRepository implements IUserRepository {
    * Find user by ID
    */
   async findById(id: string): Promise<IUser | null> {
-    const result = await query(
-      'SELECT * FROM users WHERE id = $1',
-      [id]
-    );
-
-    if (result.rows.length === 0) {
+    if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
-    return this.mapToUser(result.rows[0]);
+    const user = await UserDocumentModel.findById(id).lean<UserDoc | null>();
+    return user ? this.mapToUser(user) : null;
   }
 
   /**
    * Find user by email
    */
   async findByEmail(email: string): Promise<IUser | null> {
-    const result = await query(
-      'SELECT * FROM users WHERE email = $1',
-      [email.toLowerCase()]
-    );
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return this.mapToUser(result.rows[0]);
+    const user = await UserDocumentModel.findOne({ email: email.toLowerCase() }).lean<UserDoc | null>();
+    return user ? this.mapToUser(user) : null;
   }
 
   /**
    * Find all users
    */
   async findAll(): Promise<IUser[]> {
-    const result = await query(
-      'SELECT * FROM users ORDER BY created_at DESC'
-    );
-
-    return result.rows.map(this.mapToUser);
+    const users = await UserDocumentModel.find().sort({ createdAt: -1 }).lean<UserDoc[]>();
+    return users.map((user) => this.mapToUser(user));
   }
 
   /**
    * Find users by role
    */
   async findByRole(role: UserRole): Promise<IUser[]> {
-    const result = await query(
-      'SELECT * FROM users WHERE role = $1 ORDER BY created_at DESC',
-      [role]
-    );
-
-    return result.rows.map(this.mapToUser);
+    const users = await UserDocumentModel.find({ role }).sort({ createdAt: -1 }).lean<UserDoc[]>();
+    return users.map((user) => this.mapToUser(user));
   }
 
   /**
    * Create new user
    */
   async create(data: ICreateUserDTO): Promise<IUser> {
-    const result = await query(
-      `INSERT INTO users (name, email, password, role)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [data.name, data.email.toLowerCase(), data.password, data.role]
-    );
-
-    return this.mapToUser(result.rows[0]);
+    const user = await UserDocumentModel.create({
+      ...data,
+      email: data.email.toLowerCase()
+    });
+    return this.mapToUser(user.toObject() as UserDoc);
   }
 
   /**
    * Update user
    */
   async update(id: string, data: Partial<ICreateUserDTO>): Promise<IUser | null> {
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramCount = 1;
-
-    if (data.name) {
-      updates.push(`name = $${paramCount++}`);
-      values.push(data.name);
-    }
-    if (data.email) {
-      updates.push(`email = $${paramCount++}`);
-      values.push(data.email.toLowerCase());
-    }
-    if (data.password) {
-      updates.push(`password = $${paramCount++}`);
-      values.push(data.password);
-    }
-    if (data.role) {
-      updates.push(`role = $${paramCount++}`);
-      values.push(data.role);
-    }
-
-    if (updates.length === 0) {
-      return this.findById(id);
-    }
-
-    values.push(id);
-
-    const result = await query(
-      `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
-      values
-    );
-
-    if (result.rows.length === 0) {
+    if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
-    return this.mapToUser(result.rows[0]);
+    if (Object.keys(data).length === 0) {
+      return this.findById(id);
+    }
+
+    const updatePayload: Partial<ICreateUserDTO> = { ...data };
+    if (updatePayload.email) {
+      updatePayload.email = updatePayload.email.toLowerCase();
+    }
+
+    const user = await UserDocumentModel.findByIdAndUpdate(id, updatePayload, {
+      new: true,
+      runValidators: true
+    }).lean<UserDoc | null>();
+
+    return user ? this.mapToUser(user) : null;
   }
 
   /**
    * Delete user
    */
   async delete(id: string): Promise<boolean> {
-    const result = await query(
-      'DELETE FROM users WHERE id = $1',
-      [id]
-    );
+    if (!Types.ObjectId.isValid(id)) {
+      return false;
+    }
 
-    return result.rowCount > 0;
+    const result = await UserDocumentModel.findByIdAndDelete(id);
+    return result !== null;
   }
 
   /**
    * Map database row to IUser interface
    */
-  private mapToUser(row: any): IUser {
+  private mapToUser(row: UserDoc): IUser {
     return {
-      id: row.id,
+      id: row._id.toString(),
       name: row.name,
       email: row.email,
       password: row.password,
       role: row.role as UserRole,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt)
     };
   }
 }

@@ -78,7 +78,7 @@ export class Admin extends User {
   }
 
   // Override toJSON to include admin-specific fields
-  toJSON(): object {
+  toJSON(): Omit<IUser, 'password'> & { employeeId?: string; position?: string } {
     return {
       ...super.toJSON(),
       employeeId: this._employeeId,

@@ -4,7 +4,8 @@
  * Implements IPaymentRepository interface
  */
 
-import { query } from '../config/database';
+import { Types } from 'mongoose';
+import { PaymentDocumentModel, PaymentDoc } from '../db/models';
 import { IPayment, ICreatePaymentDTO, PaymentStatus, PaymentMethod } from '../interfaces';
 import { IPaymentRepository } from '../interfaces/repositories';
 
@@ -13,93 +14,78 @@ export class PaymentRepository implements IPaymentRepository {
    * Find payment by ID
    */
   async findById(id: string): Promise<IPayment | null> {
-    const result = await query(
-      'SELECT * FROM payments WHERE id = $1',
-      [id]
-    );
-
-    if (result.rows.length === 0) {
+    if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
-    return this.mapToPayment(result.rows[0]);
+    const payment = await PaymentDocumentModel.findById(id).lean<PaymentDoc | null>();
+    return payment ? this.mapToPayment(payment) : null;
   }
 
   /**
    * Find payment by order ID
    */
   async findByOrderId(orderId: string): Promise<IPayment | null> {
-    const result = await query(
-      'SELECT * FROM payments WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1',
-      [orderId]
-    );
-
-    if (result.rows.length === 0) {
+    if (!Types.ObjectId.isValid(orderId)) {
       return null;
     }
 
-    return this.mapToPayment(result.rows[0]);
+    const payment = await PaymentDocumentModel.findOne({ orderId })
+      .sort({ createdAt: -1 })
+      .lean<PaymentDoc | null>();
+
+    return payment ? this.mapToPayment(payment) : null;
   }
 
   /**
    * Find all payments
    */
   async findAll(): Promise<IPayment[]> {
-    const result = await query(
-      'SELECT * FROM payments ORDER BY created_at DESC'
-    );
-
-    return result.rows.map(this.mapToPayment);
+    const payments = await PaymentDocumentModel.find().sort({ createdAt: -1 }).lean<PaymentDoc[]>();
+    return payments.map((payment) => this.mapToPayment(payment));
   }
 
   /**
    * Find payments by status
    */
   async findByStatus(status: PaymentStatus): Promise<IPayment[]> {
-    const result = await query(
-      'SELECT * FROM payments WHERE status = $1 ORDER BY created_at DESC',
-      [status]
-    );
-
-    return result.rows.map(this.mapToPayment);
+    const payments = await PaymentDocumentModel.find({ status }).sort({ createdAt: -1 }).lean<PaymentDoc[]>();
+    return payments.map((payment) => this.mapToPayment(payment));
   }
 
   /**
    * Create new payment
    */
   async create(data: ICreatePaymentDTO): Promise<IPayment> {
-    const result = await query(
-      `INSERT INTO payments (order_id, amount, status, method)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [data.orderId, data.amount, PaymentStatus.PENDING, data.method]
-    );
+    const payment = await PaymentDocumentModel.create({
+      orderId: new Types.ObjectId(data.orderId),
+      amount: data.amount,
+      status: PaymentStatus.PENDING,
+      method: data.method
+    });
 
-    return this.mapToPayment(result.rows[0]);
+    return this.mapToPayment(payment.toObject() as PaymentDoc);
   }
 
   /**
    * Update payment status
    */
   async updateStatus(id: string, status: string, transactionId?: string): Promise<IPayment | null> {
-    let queryStr: string;
-    let params: any[];
-
-    if (transactionId) {
-      queryStr = `UPDATE payments SET status = $1, transaction_id = $2 WHERE id = $3 RETURNING *`;
-      params = [status, transactionId, id];
-    } else {
-      queryStr = `UPDATE payments SET status = $1 WHERE id = $2 RETURNING *`;
-      params = [status, id];
-    }
-
-    const result = await query(queryStr, params);
-
-    if (result.rows.length === 0) {
+    if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
-    return this.mapToPayment(result.rows[0]);
+    const updatePayload: { status: string; transactionId?: string } = { status };
+    if (transactionId) {
+      updatePayload.transactionId = transactionId;
+    }
+
+    const payment = await PaymentDocumentModel.findByIdAndUpdate(id, updatePayload, {
+      new: true,
+      runValidators: true
+    }).lean<PaymentDoc | null>();
+
+    return payment ? this.mapToPayment(payment) : null;
   }
 
   /**
@@ -112,32 +98,36 @@ export class PaymentRepository implements IPaymentRepository {
     totalAmount: number;
     byMethod: Record<string, number>;
   }> {
-    const statsResult = await query(`
-      SELECT
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'success') as successful,
-        COUNT(*) FILTER (WHERE status = 'failed') as failed,
-        COALESCE(SUM(amount) FILTER (WHERE status = 'success'), 0) as total_amount
-      FROM payments
-    `);
-
-    const methodResult = await query(`
-      SELECT method, COALESCE(SUM(amount), 0) as amount
-      FROM payments
-      WHERE status = 'success'
-      GROUP BY method
-    `);
+    const [
+      total,
+      successful,
+      failed,
+      totalAmountResult,
+      byMethodResult
+    ] = await Promise.all([
+      PaymentDocumentModel.countDocuments(),
+      PaymentDocumentModel.countDocuments({ status: PaymentStatus.SUCCESS }),
+      PaymentDocumentModel.countDocuments({ status: PaymentStatus.FAILED }),
+      PaymentDocumentModel.aggregate<{ totalAmount: number }>([
+        { $match: { status: PaymentStatus.SUCCESS } },
+        { $group: { _id: null, totalAmount: { $sum: '$amount' } } }
+      ]),
+      PaymentDocumentModel.aggregate<{ _id: string; amount: number }>([
+        { $match: { status: PaymentStatus.SUCCESS } },
+        { $group: { _id: '$method', amount: { $sum: '$amount' } } }
+      ])
+    ]);
 
     const byMethod: Record<string, number> = {};
-    methodResult.rows.forEach((row: any) => {
-      byMethod[row.method] = parseFloat(row.amount);
+    byMethodResult.forEach((row) => {
+      byMethod[row._id] = Number(row.amount);
     });
 
     return {
-      totalPayments: parseInt(statsResult.rows[0].total),
-      successfulPayments: parseInt(statsResult.rows[0].successful),
-      failedPayments: parseInt(statsResult.rows[0].failed),
-      totalAmount: parseFloat(statsResult.rows[0].total_amount),
+      totalPayments: total,
+      successfulPayments: successful,
+      failedPayments: failed,
+      totalAmount: totalAmountResult[0]?.totalAmount || 0,
       byMethod
     };
   }
@@ -145,16 +135,16 @@ export class PaymentRepository implements IPaymentRepository {
   /**
    * Map database row to IPayment interface
    */
-  private mapToPayment(row: any): IPayment {
+  private mapToPayment(row: PaymentDoc): IPayment {
     return {
-      id: row.id,
-      orderId: row.order_id,
-      amount: parseFloat(row.amount),
+      id: row._id.toString(),
+      orderId: row.orderId.toString(),
+      amount: Number(row.amount),
       status: row.status as PaymentStatus,
       method: row.method as PaymentMethod,
-      transactionId: row.transaction_id,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      transactionId: row.transactionId || undefined,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt)
     };
   }
 }

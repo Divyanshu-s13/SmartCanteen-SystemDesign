@@ -55,7 +55,7 @@ export class Student extends User {
   }
 
   // Override toJSON to include student-specific fields
-  toJSON(): object {
+  toJSON(): Omit<IUser, 'password'> & { studentId?: string; department?: string } {
     return {
       ...super.toJSON(),
       studentId: this._studentId,

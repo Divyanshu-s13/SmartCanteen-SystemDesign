@@ -4,7 +4,8 @@
  * Implements IOrderRepository interface
  */
 
-import { query, transaction } from '../config/database';
+import { Types } from 'mongoose';
+import { MenuItemDocumentModel, MenuItemDoc, OrderDocumentModel, OrderDoc } from '../db/models';
 import { IOrder, IOrderItem, ICreateOrderDTO, OrderStatus } from '../interfaces';
 import { IOrderRepository } from '../interfaces/repositories';
 
@@ -13,208 +14,167 @@ export class OrderRepository implements IOrderRepository {
    * Find order by ID
    */
   async findById(id: string): Promise<IOrder | null> {
-    const result = await query(
-      'SELECT * FROM orders WHERE id = $1',
-      [id]
-    );
-
-    if (result.rows.length === 0) {
+    if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
-    return this.mapToOrder(result.rows[0]);
+    const order = await OrderDocumentModel.findById(id).lean<OrderDoc | null>();
+    return order ? this.mapToOrder(order) : null;
   }
 
   /**
    * Find order by ID with items
    */
   async findByIdWithItems(id: string): Promise<IOrder | null> {
-    const orderResult = await query(
-      'SELECT * FROM orders WHERE id = $1',
-      [id]
-    );
-
-    if (orderResult.rows.length === 0) {
+    if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
-    const itemsResult = await query(
-      `SELECT oi.*, mi.name, mi.description, mi.category, mi.image_url, mi.is_available
-       FROM order_items oi
-       JOIN menu_items mi ON oi.menu_item_id = mi.id
-       WHERE oi.order_id = $1`,
-      [id]
-    );
+    const order = await OrderDocumentModel.findById(id)
+      .populate('items.menuItemId')
+      .lean<OrderDoc | null>();
 
-    const order = this.mapToOrder(orderResult.rows[0]);
-    order.items = itemsResult.rows.map(this.mapToOrderItem);
-
-    return order;
+    return order ? this.mapToOrder(order, true) : null;
   }
 
   /**
    * Find all orders
    */
   async findAll(): Promise<IOrder[]> {
-    const result = await query(
-      'SELECT * FROM orders ORDER BY created_at DESC'
-    );
-
-    return result.rows.map(this.mapToOrder);
+    const orders = await OrderDocumentModel.find().sort({ createdAt: -1 }).lean<OrderDoc[]>();
+    return orders.map((order) => this.mapToOrder(order));
   }
 
   /**
    * Find orders by user ID
    */
   async findByUserId(userId: string): Promise<IOrder[]> {
-    const result = await query(
-      'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
+    if (!Types.ObjectId.isValid(userId)) {
+      return [];
+    }
 
-    // Get items for each order
-    const orders = await Promise.all(
-      result.rows.map(async (row) => {
-        const order = this.mapToOrder(row);
-        const itemsResult = await query(
-          `SELECT oi.*, mi.name, mi.description, mi.category, mi.image_url
-           FROM order_items oi
-           JOIN menu_items mi ON oi.menu_item_id = mi.id
-           WHERE oi.order_id = $1`,
-          [order.id]
-        );
-        order.items = itemsResult.rows.map(this.mapToOrderItem);
-        return order;
-      })
-    );
+    const orders = await OrderDocumentModel.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate('items.menuItemId')
+      .lean<OrderDoc[]>();
 
-    return orders;
+    return orders.map((order) => this.mapToOrder(order, true));
   }
 
   /**
    * Find orders by status
    */
   async findByStatus(status: OrderStatus): Promise<IOrder[]> {
-    const result = await query(
-      'SELECT * FROM orders WHERE status = $1 ORDER BY token_number ASC',
-      [status]
-    );
+    const orders = await OrderDocumentModel.find({ status })
+      .sort({ tokenNumber: 1 })
+      .lean<OrderDoc[]>();
 
-    return result.rows.map(this.mapToOrder);
+    return orders.map((order) => this.mapToOrder(order));
   }
 
   /**
    * Find active orders (not completed or cancelled)
    */
   async findActiveOrders(): Promise<IOrder[]> {
-    const result = await query(
-      `SELECT * FROM orders
-       WHERE status NOT IN ('completed', 'cancelled')
-       ORDER BY token_number ASC`
-    );
+    const orders = await OrderDocumentModel.find({
+      status: { $nin: [OrderStatus.COMPLETED, OrderStatus.CANCELLED] }
+    })
+      .sort({ tokenNumber: 1 })
+      .populate('items.menuItemId')
+      .lean<OrderDoc[]>();
 
-    // Get items for each order
-    const orders = await Promise.all(
-      result.rows.map(async (row) => {
-        const order = this.mapToOrder(row);
-        const itemsResult = await query(
-          `SELECT oi.*, mi.name, mi.description, mi.category, mi.image_url
-           FROM order_items oi
-           JOIN menu_items mi ON oi.menu_item_id = mi.id
-           WHERE oi.order_id = $1`,
-          [order.id]
-        );
-        order.items = itemsResult.rows.map(this.mapToOrderItem);
-        return order;
-      })
-    );
-
-    return orders;
+    return orders.map((order) => this.mapToOrder(order, true));
   }
 
   /**
    * Create new order with items
    */
   async create(data: ICreateOrderDTO, totalPrice: number, tokenNumber: number): Promise<IOrder> {
-    return transaction(async (client) => {
-      // Create order
-      const orderResult = await client.query(
-        `INSERT INTO orders (user_id, total_price, status, token_number)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [data.userId, totalPrice, OrderStatus.PENDING, tokenNumber]
-      );
+    if (!Types.ObjectId.isValid(data.userId)) {
+      throw new Error('Invalid user ID');
+    }
 
-      const order = this.mapToOrder(orderResult.rows[0]);
+    const orderItems: Array<{ menuItemId: Types.ObjectId; quantity: number; price: number }> = [];
 
-      // Create order items
-      const items: IOrderItem[] = [];
-      for (const item of data.items) {
-        // Get menu item price
-        const menuResult = await client.query(
-          'SELECT price FROM menu_items WHERE id = $1',
-          [item.menuItemId]
-        );
-
-        if (menuResult.rows.length === 0) {
-          throw new Error(`Menu item not found: ${item.menuItemId}`);
-        }
-
-        const price = parseFloat(menuResult.rows[0].price);
-
-        const itemResult = await client.query(
-          `INSERT INTO order_items (order_id, menu_item_id, quantity, price)
-           VALUES ($1, $2, $3, $4)
-           RETURNING *`,
-          [order.id, item.menuItemId, item.quantity, price * item.quantity]
-        );
-
-        items.push(this.mapToOrderItem(itemResult.rows[0]));
+    for (const item of data.items) {
+      if (!Types.ObjectId.isValid(item.menuItemId)) {
+        throw new Error(`Invalid menu item ID: ${item.menuItemId}`);
       }
 
-      order.items = items;
-      return order;
+      const menuItem = await MenuItemDocumentModel.findById(item.menuItemId).lean<MenuItemDoc | null>();
+      if (!menuItem) {
+        throw new Error(`Menu item not found: ${item.menuItemId}`);
+      }
+
+      orderItems.push({
+        menuItemId: new Types.ObjectId(item.menuItemId),
+        quantity: item.quantity,
+        price: Number(menuItem.price) * item.quantity
+      });
+    }
+
+    const orderDoc = await OrderDocumentModel.create({
+      userId: new Types.ObjectId(data.userId),
+      totalPrice,
+      status: OrderStatus.PENDING,
+      tokenNumber,
+      items: orderItems
     });
+
+    const populated = await OrderDocumentModel.findById(orderDoc._id)
+      .populate('items.menuItemId')
+      .lean<OrderDoc | null>();
+
+    if (!populated) {
+      throw new Error('Failed to create order');
+    }
+
+    return this.mapToOrder(populated, true);
   }
 
   /**
    * Update order status
    */
   async updateStatus(id: string, status: OrderStatus): Promise<IOrder | null> {
-    const result = await query(
-      `UPDATE orders SET status = $1 WHERE id = $2 RETURNING *`,
-      [status, id]
-    );
-
-    if (result.rows.length === 0) {
+    if (!Types.ObjectId.isValid(id)) {
       return null;
     }
 
-    return this.findByIdWithItems(id);
+    const order = await OrderDocumentModel.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true, runValidators: true }
+    ).populate('items.menuItemId').lean<OrderDoc | null>();
+
+    return order ? this.mapToOrder(order, true) : null;
   }
 
   /**
    * Get next token number
    */
   async getNextTokenNumber(): Promise<number> {
-    const result = await query(
-      "SELECT nextval('token_number_seq') as token"
-    );
+    const lastOrder = await OrderDocumentModel.findOne().sort({ createdAt: -1 }).lean<OrderDoc | null>();
+    if (!lastOrder) {
+      return 1;
+    }
 
-    return parseInt(result.rows[0].token);
+    return lastOrder.tokenNumber >= 999 ? 1 : lastOrder.tokenNumber + 1;
   }
 
   /**
    * Get today's orders
    */
   async getTodayOrders(): Promise<IOrder[]> {
-    const result = await query(
-      `SELECT * FROM orders
-       WHERE DATE(created_at) = CURRENT_DATE
-       ORDER BY created_at DESC`
-    );
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
 
-    return result.rows.map(this.mapToOrder);
+    const orders = await OrderDocumentModel.find({
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    }).sort({ createdAt: -1 }).lean<OrderDoc[]>();
+
+    return orders.map((order) => this.mapToOrder(order));
   }
 
   /**
@@ -228,70 +188,98 @@ export class OrderRepository implements IOrderRepository {
     todayOrders: number;
     todayRevenue: number;
   }> {
-    const statsResult = await query(`
-      SELECT
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status IN ('pending', 'paid', 'preparing', 'ready')) as pending,
-        COUNT(*) FILTER (WHERE status = 'completed') as completed,
-        COALESCE(SUM(total_price) FILTER (WHERE status = 'completed'), 0) as total_revenue
-      FROM orders
-    `);
-
-    const todayResult = await query(`
-      SELECT
-        COUNT(*) as today_orders,
-        COALESCE(SUM(total_price) FILTER (WHERE status = 'completed'), 0) as today_revenue
-      FROM orders
-      WHERE DATE(created_at) = CURRENT_DATE
-    `);
+    const [
+      total,
+      pending,
+      completed,
+      totalRevenueAgg,
+      todayOrders,
+      todayRevenueAgg
+    ] = await Promise.all([
+      OrderDocumentModel.countDocuments(),
+      OrderDocumentModel.countDocuments({
+        status: { $in: [OrderStatus.PENDING, OrderStatus.PAID, OrderStatus.PREPARING, OrderStatus.READY] }
+      }),
+      OrderDocumentModel.countDocuments({ status: OrderStatus.COMPLETED }),
+      OrderDocumentModel.aggregate<{ totalRevenue: number }>([
+        { $match: { status: OrderStatus.COMPLETED } },
+        { $group: { _id: null, totalRevenue: { $sum: '$totalPrice' } } }
+      ]),
+      OrderDocumentModel.countDocuments({
+        createdAt: {
+          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          $lte: new Date(new Date().setHours(23, 59, 59, 999))
+        }
+      }),
+      OrderDocumentModel.aggregate<{ todayRevenue: number }>([
+        {
+          $match: {
+            status: OrderStatus.COMPLETED,
+            createdAt: {
+              $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+              $lte: new Date(new Date().setHours(23, 59, 59, 999))
+            }
+          }
+        },
+        { $group: { _id: null, todayRevenue: { $sum: '$totalPrice' } } }
+      ])
+    ]);
 
     return {
-      total: parseInt(statsResult.rows[0].total),
-      pending: parseInt(statsResult.rows[0].pending),
-      completed: parseInt(statsResult.rows[0].completed),
-      totalRevenue: parseFloat(statsResult.rows[0].total_revenue),
-      todayOrders: parseInt(todayResult.rows[0].today_orders),
-      todayRevenue: parseFloat(todayResult.rows[0].today_revenue)
+      total,
+      pending,
+      completed,
+      totalRevenue: totalRevenueAgg[0]?.totalRevenue || 0,
+      todayOrders,
+      todayRevenue: todayRevenueAgg[0]?.todayRevenue || 0
     };
   }
 
   /**
    * Map database row to IOrder interface
    */
-  private mapToOrder(row: any): IOrder {
+  private mapToOrder(row: OrderDoc, includeMenuItems: boolean = false): IOrder {
     return {
-      id: row.id,
-      userId: row.user_id,
-      totalPrice: parseFloat(row.total_price),
+      id: row._id.toString(),
+      userId: row.userId.toString(),
+      totalPrice: Number(row.totalPrice),
       status: row.status as OrderStatus,
-      tokenNumber: parseInt(row.token_number),
-      items: [],
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      tokenNumber: Number(row.tokenNumber),
+      items: (row.items || []).map((item: any) => this.mapToOrderItem(item, row._id.toString(), includeMenuItems)),
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt)
     };
   }
 
   /**
    * Map database row to IOrderItem interface
    */
-  private mapToOrderItem(row: any): IOrderItem {
+  private mapToOrderItem(row: any, orderId: string, includeMenuItem: boolean): IOrderItem {
+    const menuItem = includeMenuItem && row.menuItemId && row.menuItemId._id
+      ? {
+        id: row.menuItemId._id.toString(),
+        name: row.menuItemId.name,
+        description: row.menuItemId.description || '',
+        price: Number(row.menuItemId.price),
+        category: row.menuItemId.category,
+        imageUrl: row.menuItemId.imageUrl || undefined,
+        isAvailable: row.menuItemId.isAvailable,
+        createdAt: new Date(row.menuItemId.createdAt || new Date()),
+        updatedAt: new Date(row.menuItemId.updatedAt || new Date())
+      }
+      : undefined;
+
+    const menuItemId = row.menuItemId?._id
+      ? row.menuItemId._id.toString()
+      : row.menuItemId?.toString();
+
     return {
-      id: row.id,
-      orderId: row.order_id,
-      menuItemId: row.menu_item_id,
-      quantity: parseInt(row.quantity),
-      price: parseFloat(row.price),
-      menuItem: row.name ? {
-        id: row.menu_item_id,
-        name: row.name,
-        description: row.description || '',
-        price: parseFloat(row.price) / parseInt(row.quantity),
-        category: row.category,
-        imageUrl: row.image_url,
-        isAvailable: row.is_available,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      } : undefined
+      id: row._id?.toString() || new Types.ObjectId().toString(),
+      orderId,
+      menuItemId: menuItemId || '',
+      quantity: Number(row.quantity),
+      price: Number(row.price),
+      menuItem
     };
   }
 }

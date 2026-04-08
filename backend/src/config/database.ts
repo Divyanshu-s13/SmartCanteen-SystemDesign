@@ -1,80 +1,36 @@
 /**
  * Database Configuration
- * PostgreSQL connection pool setup
+ * MongoDB connection setup with Mongoose
  */
 
-import { Pool, PoolConfig } from 'pg';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const poolConfig: PoolConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'smart_canteen',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection fails
+const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/smart_canteen';
+
+export const connectDatabase = async (): Promise<void> => {
+  if (mongoose.connection.readyState === 1) {
+    return;
+  }
+
+  await mongoose.connect(mongoUri);
 };
 
-// Create connection pool
-const pool = new Pool(poolConfig);
+export const disconnectDatabase = async (): Promise<void> => {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+};
 
-// Handle pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
-
-// Test database connection
 export const testConnection = async (): Promise<boolean> => {
   try {
-    const client = await pool.connect();
-    await client.query('SELECT NOW()');
-    client.release();
-    console.log('Database connected successfully');
+    await connectDatabase();
+    console.log('MongoDB connected successfully');
     return true;
   } catch (error) {
-    console.error('Database connection failed:', error);
+    console.error('MongoDB connection failed:', error);
     return false;
-  }
-};
-
-// Export pool for queries
-export { pool };
-
-// Query helper with automatic client management
-export const query = async (text: string, params?: any[]): Promise<any> => {
-  const start = Date.now();
-  try {
-    const result = await pool.query(text, params);
-    const duration = Date.now() - start;
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Executed query', { text: text.substring(0, 50), duration, rows: result.rowCount });
-    }
-    return result;
-  } catch (error) {
-    console.error('Query error:', { text, error });
-    throw error;
-  }
-};
-
-// Transaction helper
-export const transaction = async <T>(
-  callback: (client: any) => Promise<T>
-): Promise<T> => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await callback(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
   }
 };

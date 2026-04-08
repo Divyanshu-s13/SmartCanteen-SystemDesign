@@ -225,11 +225,12 @@ export class PaymentContext {
 
   constructor() {
     // Initialize all strategies
-    this.strategies = new Map([
+    const strategyEntries: Array<[PaymentMethod, IPaymentStrategy]> = [
       [PaymentMethod.UPI, new UPIPaymentStrategy()],
       [PaymentMethod.CARD, new CardPaymentStrategy()],
       [PaymentMethod.WALLET, new WalletPaymentStrategy()]
-    ]);
+    ];
+    this.strategies = new Map(strategyEntries);
 
     // Default strategy
     this.strategy = this.strategies.get(PaymentMethod.UPI)!;

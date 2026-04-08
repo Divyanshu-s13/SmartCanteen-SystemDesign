@@ -13,7 +13,7 @@ dotenv.config();
 
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware';
-import { testConnection } from './config/database';
+import { disconnectDatabase, testConnection } from './config/database';
 import { createWebSocketHandler } from './websocket';
 import { orderService } from './services';
 
@@ -114,7 +114,8 @@ const startServer = async () => {
 // Handle graceful shutdown
 process.on('SIGINT', () => {
   console.log('\nShutting down gracefully...');
-  httpServer.close(() => {
+  httpServer.close(async () => {
+    await disconnectDatabase();
     console.log('Server closed');
     process.exit(0);
   });
@@ -122,7 +123,8 @@ process.on('SIGINT', () => {
 
 process.on('SIGTERM', () => {
   console.log('\nShutting down gracefully...');
-  httpServer.close(() => {
+  httpServer.close(async () => {
+    await disconnectDatabase();
     console.log('Server closed');
     process.exit(0);
   });

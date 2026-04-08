@@ -3,4 +3,4 @@
  * Export all configuration modules
  */
 
-export { pool, query, transaction, testConnection } from './database';
+export { connectDatabase, disconnectDatabase, testConnection } from './database';

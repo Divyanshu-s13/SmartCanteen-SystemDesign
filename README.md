@@ -32,7 +32,7 @@ A full-stack web application for college canteens to manage food ordering, digit
 ### Backend
 - Node.js with Express.js
 - TypeScript
-- PostgreSQL
+- MongoDB (Mongoose)
 - JWT for authentication
 - bcrypt for password hashing
 - Socket.io for real-time updates
@@ -84,29 +84,21 @@ smart-canteen/
 │   └── lib/                # Utilities
 │
 └── database/
-    └── schema.sql          # PostgreSQL schema
+    └── schema.sql          # Legacy SQL schema (optional reference)
 ```
 
 ## Setup Instructions
 
 ### Prerequisites
 - Node.js 18+
-- PostgreSQL 14+
+- MongoDB 6+
 - npm or yarn
 
 ### 1. Database Setup
 
 ```bash
-# Create database
-createdb smart_canteen
-
-# Or using psql
-psql -U postgres
-CREATE DATABASE smart_canteen;
-\q
-
-# Apply schema
-psql -U postgres -d smart_canteen -f database/schema.sql
+# Start local MongoDB (example with Homebrew services)
+brew services start mongodb-community
 ```
 
 ### 2. Backend Setup
@@ -121,16 +113,12 @@ npm install
 cp .env.example .env
 
 # Edit .env with your database credentials
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_NAME=smart_canteen
-# DB_USER=postgres
-# DB_PASSWORD=your_password
+# MONGODB_URI=mongodb://127.0.0.1:27017/smart_canteen
 # JWT_SECRET=your-secret-key
 # PORT=5000
 
-# Run database migrations
-npm run db:migrate
+# Setup database indexes
+npm run db:setup
 
 # Seed sample data
 npm run db:seed
