@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { orderApi } from '@/services/api';
@@ -13,10 +13,23 @@ import type { Order, QueueItem } from '@/types';
 export default function OrdersPage() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const newOrderId = searchParams.get('new');
+  const [newOrderId, setNewOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncNewOrderId = () => {
+      const params = new URLSearchParams(window.location.search);
+      setNewOrderId(params.get('new'));
+    };
+
+    syncNewOrderId();
+    window.addEventListener('popstate', syncNewOrderId);
+
+    return () => {
+      window.removeEventListener('popstate', syncNewOrderId);
+    };
+  }, []);
 
   const upsertOrder = (incoming: Order) => {
     setOrders((prevOrders) => {

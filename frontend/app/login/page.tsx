@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,7 +22,11 @@ export default function LoginPage() {
     const result = await login(email, password);
     if (!result.success) {
       setError(result.message);
+      setIsLoading(false);
+      return;
     }
+
+    router.push('/');
 
     setIsLoading(false);
   };

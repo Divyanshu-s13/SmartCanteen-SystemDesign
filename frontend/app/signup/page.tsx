@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignupPage() {
   const { signup } = useAuth();
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +33,11 @@ export default function SignupPage() {
     const result = await signup(name, email, password);
     if (!result.success) {
       setError(result.message);
+      setIsLoading(false);
+      return;
     }
+
+    router.push('/');
     setIsLoading(false);
   };
 

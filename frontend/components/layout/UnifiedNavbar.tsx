@@ -6,9 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { navigateWithTransition } from '../../lib/navigation';
 
 export function UnifiedNavbar() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const isAdmin = user?.role === 'admin';
 
   const activePage: 'home' | 'menu' | 'order' = pathname === '/menu'
     ? 'menu'
@@ -58,9 +59,16 @@ export function UnifiedNavbar() {
     router.push('/signup');
   };
 
+  const handleAdminClick = () => {
+    if (isAuthenticated && isAdmin) {
+      navigateWithTransition(() => router.push('/admin'));
+    }
+  };
+
   const homeClass = activePage === 'home' ? 'eat-link eat-link-active' : 'eat-link';
   const menuClass = activePage === 'menu' ? 'eat-link eat-link-btn eat-link-active' : 'eat-link eat-link-btn';
   const orderClass = activePage === 'order' ? 'eat-link eat-link-btn eat-link-active' : 'eat-link eat-link-btn';
+  const profileName = user?.name?.split(' ')[0] || 'Profile';
 
   return (
     <header className="eat-nav">
@@ -90,12 +98,36 @@ export function UnifiedNavbar() {
       </nav>
 
       <div className="eat-auth-actions">
-        <button type="button" className="eat-auth-btn eat-auth-btn-secondary" onClick={() => handleAuthClick('login')}>
-          Sign In
-        </button>
-        <button type="button" className="eat-auth-btn eat-auth-btn-primary" onClick={() => handleAuthClick('signup')}>
-          Sign Up
-        </button>
+        {isAuthenticated ? (
+          <>
+            {isAdmin && (
+              <button type="button" className="eat-auth-btn eat-auth-btn-primary" onClick={handleAdminClick}>
+                Admin
+              </button>
+            )}
+            <button
+              type="button"
+              className="eat-profile-chip"
+              aria-label={`Signed in as ${user?.name || 'user'}`}
+              onClick={isAdmin ? handleAdminClick : undefined}
+            >
+              <span className="eat-profile-avatar">{profileName.charAt(0).toUpperCase()}</span>
+              <span className="eat-profile-name">{profileName}</span>
+            </button>
+            <button type="button" className="eat-auth-btn eat-auth-btn-secondary" onClick={logout}>
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="eat-auth-btn eat-auth-btn-secondary" onClick={() => handleAuthClick('login')}>
+              Sign In
+            </button>
+            <button type="button" className="eat-auth-btn eat-auth-btn-primary" onClick={() => handleAuthClick('signup')}>
+              Sign Up
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

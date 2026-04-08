@@ -9,9 +9,11 @@ import { navigateWithTransition } from '../lib/navigation';
 export default function HomePage() {
   const { isAuthenticated, isLoading, login, signup } = useAuth();
   const router = useRouter();
+
   const [isBowlPopping, setIsBowlPopping] = useState(false);
-  const [redirectAfterAuth, setRedirectAfterAuth] = useState<string | null>(null);
   const [authModal, setAuthModal] = useState<'login' | 'signup' | null>(null);
+  const [redirectAfterAuth, setRedirectAfterAuth] = useState<string | null>(null);
+
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -25,23 +27,17 @@ export default function HomePage() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
   useEffect(() => {
-    if (!isBowlPopping) {
-      return;
-    }
+    if (!isBowlPopping) return;
 
     const timeoutId = window.setTimeout(() => {
       setIsBowlPopping(false);
     }, 380);
 
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    return () => window.clearTimeout(timeoutId);
   }, [isBowlPopping]);
 
   useEffect(() => {
-    if (!authModal) {
-      return;
-    }
+    if (!authModal) return;
 
     const onEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -50,9 +46,7 @@ export default function HomePage() {
     };
 
     window.addEventListener('keydown', onEscape);
-    return () => {
-      window.removeEventListener('keydown', onEscape);
-    };
+    return () => window.removeEventListener('keydown', onEscape);
   }, [authModal]);
 
   useEffect(() => {
@@ -67,9 +61,7 @@ export default function HomePage() {
     };
 
     window.addEventListener('deque-auth-open', onAuthOpen as EventListener);
-    return () => {
-      window.removeEventListener('deque-auth-open', onAuthOpen as EventListener);
-    };
+    return () => window.removeEventListener('deque-auth-open', onAuthOpen as EventListener);
   }, []);
 
   const openAuthModal = (type: 'login' | 'signup') => {
@@ -78,9 +70,7 @@ export default function HomePage() {
   };
 
   const closeAuthModal = () => {
-    if (authLoading) {
-      return;
-    }
+    if (authLoading) return;
     setAuthModal(null);
   };
 
@@ -99,7 +89,7 @@ export default function HomePage() {
     setAuthError('');
     setAuthLoading(true);
 
-    const result = await login(loginEmail, loginPassword, redirectAfterAuth ?? undefined);
+    const result = await login(loginEmail, loginPassword);
 
     if (!result.success) {
       setAuthError(result.message);
@@ -111,9 +101,13 @@ export default function HomePage() {
       setLoginPassword('');
     }
 
-    setRedirectAfterAuth(null);
     setAuthModal(null);
     setAuthLoading(false);
+
+    if (redirectAfterAuth) {
+      navigateWithTransition(() => router.push(redirectAfterAuth));
+      setRedirectAfterAuth(null);
+    }
   };
 
   const handleSignupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -145,9 +139,7 @@ export default function HomePage() {
 
   const triggerBowlPop = () => {
     setIsBowlPopping(false);
-    window.requestAnimationFrame(() => {
-      setIsBowlPopping(true);
-    });
+    window.requestAnimationFrame(() => setIsBowlPopping(true));
   };
 
   const handleBowlClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -169,46 +161,30 @@ export default function HomePage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="eat-shell">
-        <main className="eat-frame flex items-center justify-center">
-          <p className="text-[#8a3c2d] tracking-[0.12em] text-xs uppercase">Loading...</p>
-        </main>
-      </div>
-    );
-  }
-
   const menuTiles = [
     {
       title: 'Pizza',
-      image:
-        'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=520&q=80',
+      image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=520&q=80',
     },
     {
       title: 'Burgers',
-      image:
-        'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=520&q=80',
+      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=520&q=80',
     },
     {
       title: 'Sushi',
-      image:
-        'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=520&q=80',
+      image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=520&q=80',
     },
     {
       title: 'Vegan',
-      image:
-        'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=520&q=80',
+      image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=520&q=80',
     },
     {
       title: 'Desserts',
-      image:
-        'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=520&q=80',
+      image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=520&q=80',
     },
     {
       title: 'Drinks',
-      image:
-        'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=520&q=80',
+      image: 'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=520&q=80',
     },
   ];
 
@@ -240,8 +216,7 @@ export default function HomePage() {
           </div>
 
           <p className="eat-hero-copy">
-            We appreciate your trust greatly. Our clients choose us and our
-            products. Dicta sunt explicabo.
+            We appreciate your trust greatly. Our clients choose us and our products.
           </p>
         </section>
 
@@ -268,117 +243,122 @@ export default function HomePage() {
               type="button"
               className="eat-tile eat-tile-btn"
               key={tile.title}
-              onClick={() => openAuthModal('signup')}
+              onClick={handleMenuClick}
             >
               <img src={tile.image} alt={tile.title} className="eat-tile-image" />
               <span className="eat-tile-label">{tile.title}</span>
             </button>
           ))}
         </section>
-
-        {authModal && (
-          <div className="eat-modal-overlay" onClick={closeAuthModal} role="presentation">
-            <section className="auth-popup eat-modal-popup" aria-label="Authentication popup" onClick={(event) => event.stopPropagation()}>
-              <button type="button" className="auth-close eat-modal-close" onClick={closeAuthModal} aria-label="Close popup">
-                x
-              </button>
-
-              <div className="auth-header">
-                <p className="auth-brand">Deque</p>
-                <h2 className="auth-title">{authModal === 'login' ? 'Log in' : 'Sign up'}</h2>
-                <p className="auth-subtitle">
-                  {authModal === 'login'
-                    ? 'Sign in to continue your orders and queue tracking.'
-                    : 'Create your account and start ordering faster.'}
-                </p>
-              </div>
-
-              {authError && <p className="auth-error">{authError}</p>}
-
-              {authModal === 'login' ? (
-                <form onSubmit={handleLoginSubmit} className="auth-form">
-                  <input
-                    type="email"
-                    value={loginEmail}
-                    onChange={(event) => setLoginEmail(event.target.value)}
-                    placeholder="E-mail"
-                    required
-                    className="auth-input"
-                  />
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(event) => setLoginPassword(event.target.value)}
-                    placeholder="Password"
-                    required
-                    className="auth-input"
-                  />
-                  <label className="auth-check">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(event) => setRememberMe(event.target.checked)}
-                    />
-                    <span>Keep me signed in</span>
-                  </label>
-                  <button type="submit" disabled={authLoading} className="auth-submit">
-                    {authLoading ? 'Signing in...' : 'Sign in'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleSignupSubmit} className="auth-form">
-                  <input
-                    type="text"
-                    value={signupName}
-                    onChange={(event) => setSignupName(event.target.value)}
-                    placeholder="Full name"
-                    required
-                    className="auth-input"
-                  />
-                  <input
-                    type="email"
-                    value={signupEmail}
-                    onChange={(event) => setSignupEmail(event.target.value)}
-                    placeholder="E-mail"
-                    required
-                    className="auth-input"
-                  />
-                  <input
-                    type="password"
-                    value={signupPassword}
-                    onChange={(event) => setSignupPassword(event.target.value)}
-                    placeholder="Password"
-                    required
-                    className="auth-input"
-                  />
-                  <input
-                    type="password"
-                    value={signupConfirmPassword}
-                    onChange={(event) => setSignupConfirmPassword(event.target.value)}
-                    placeholder="Confirm password"
-                    required
-                    className="auth-input"
-                  />
-                  <button type="submit" disabled={authLoading} className="auth-submit">
-                    {authLoading ? 'Creating account...' : 'Sign up'}
-                  </button>
-                </form>
-              )}
-
-              <p className="auth-footer-text">
-                {authModal === 'signup' ? 'Already have an account? ' : 'New here? '}
-                <button
-                  type="button"
-                  className="auth-link-inline eat-inline-link-btn"
-                  onClick={() => openAuthModal(authModal === 'signup' ? 'login' : 'signup')}
-                >
-                  {authModal === 'signup' ? 'Sign in' : 'Sign up'}
-                </button>
-              </p>
-            </section>
-          </div>
-        )}
       </main>
+
+      {authModal && (
+        <div className="auth-overlay" onClick={closeAuthModal}>
+          <section className="auth-popup eat-modal-popup" aria-label="Authentication popup" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="auth-close eat-modal-close" onClick={closeAuthModal} aria-label="Close popup">
+              x
+            </button>
+
+            <div className="auth-header">
+              <p className="auth-brand">Deque</p>
+              <h2 className="auth-title">{authModal === 'login' ? 'Log in' : 'Sign up'}</h2>
+              <p className="auth-subtitle">
+                {authModal === 'login'
+                  ? 'Welcome back. Continue your order journey.'
+                  : 'Create your account and start ordering in seconds.'}
+              </p>
+            </div>
+
+            {authError && <p className="auth-error">{authError}</p>}
+
+            {authModal === 'login' ? (
+              <form onSubmit={handleLoginSubmit} className="auth-form">
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(event) => setLoginEmail(event.target.value)}
+                  placeholder="E-mail"
+                  required
+                  className="auth-input"
+                />
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(event) => setLoginPassword(event.target.value)}
+                  placeholder="Password"
+                  required
+                  className="auth-input"
+                />
+                <label className="auth-check">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                  />
+                  <span>Keep me signed in</span>
+                </label>
+                <button type="submit" className="auth-submit" disabled={authLoading || isLoading}>
+                  {authLoading || isLoading ? 'Signing in...' : 'Sign In'}
+                </button>
+                <p className="auth-footer-text">
+                  New here?{' '}
+                  <button type="button" className="auth-link-inline" onClick={() => setAuthModal('signup')}>
+                    Sign up
+                  </button>
+                </p>
+              </form>
+            ) : (
+              <form onSubmit={handleSignupSubmit} className="auth-form">
+                <input
+                  type="text"
+                  value={signupName}
+                  onChange={(event) => setSignupName(event.target.value)}
+                  placeholder="Full name"
+                  required
+                  className="auth-input"
+                />
+                <input
+                  type="email"
+                  value={signupEmail}
+                  onChange={(event) => setSignupEmail(event.target.value)}
+                  placeholder="E-mail"
+                  required
+                  className="auth-input"
+                />
+                <input
+                  type="password"
+                  value={signupPassword}
+                  onChange={(event) => setSignupPassword(event.target.value)}
+                  placeholder="Password"
+                  required
+                  className="auth-input"
+                />
+                <input
+                  type="password"
+                  value={signupConfirmPassword}
+                  onChange={(event) => setSignupConfirmPassword(event.target.value)}
+                  placeholder="Confirm password"
+                  required
+                  className="auth-input"
+                />
+                <button type="submit" className="auth-submit" disabled={authLoading || isLoading}>
+                  {authLoading || isLoading ? 'Creating account...' : 'Create Account'}
+                </button>
+                <p className="auth-footer-text">
+                  Already have an account?{' '}
+                  <button type="button" className="auth-link-inline" onClick={() => setAuthModal('login')}>
+                    Sign in
+                  </button>
+                </p>
+              </form>
+            )}
+
+            <p className="auth-terms">
+              By continuing, you agree to our <Link href="#">Terms</Link> and <Link href="#">Privacy Policy</Link>.
+            </p>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
