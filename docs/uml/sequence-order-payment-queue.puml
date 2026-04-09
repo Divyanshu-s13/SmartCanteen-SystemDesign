@@ -1,0 +1,107 @@
+@startuml
+autonumber
+
+actor Student
+actor Admin
+
+participant "Frontend\n(Next.js)" as FE
+participant "API Service\n(frontend/services/api.ts)" as API
+participant "Express Route" as Route
+participant "OrderController" as OC
+participant "OrderService" as OS
+participant "MenuRepository" as MR
+participant "OrderRepository" as OR
+database "PostgreSQL" as DB
+participant "QueueManager\n(Observer Subject)" as QM
+participant "PaymentController" as PC
+participant "PaymentService" as PS
+participant "PaymentContext\n(Strategy)" as PCTX
+participant "PaymentRepository" as PR
+participant "WebSocketHandler" as WS
+
+== Student creates order ==
+Student -> FE : Select items and checkout
+FE -> API : POST /orders {items}
+API -> Route : /api/orders
+Route -> OC : createOrder()
+OC -> OS : createOrder(dto)
+
+loop each item
+  OS -> MR : findById(menuItemId)
+  MR -> DB : SELECT menu_items
+  DB --> MR : item + availability + price
+  MR --> OS : item
+end
+
+OS -> OR : getNextTokenNumber()
+OR -> DB : SELECT nextval(token_number_seq)
+DB --> OR : tokenNumber
+
+OS -> OR : create(order, totalPrice, tokenNumber)
+OR -> DB : INSERT orders + order_items (transaction)
+DB --> OR : created order
+OR --> OS : order
+
+OS -> QM : addToQueue(order)
+QM -> WS : notify queue:update and queue:full
+OS --> OC : success(order)
+OC --> Route : 201 Created
+Route --> API : response
+API --> FE : orderId
+
+== Student pays for order ==
+Student -> FE : Choose payment method/details
+FE -> API : POST /payments {orderId, method, paymentDetails}
+API -> Route : /api/payments
+Route -> PC : processPayment()
+PC -> PS : processPayment(orderId, method, details)
+
+PS -> OR : findById(orderId)
+OR -> DB : SELECT order
+DB --> OR : order(status=pending)
+OR --> PS : order
+
+PS -> PR : create(payment pending)
+PR -> DB : INSERT payments
+DB --> PR : payment row
+PR --> PS : payment
+
+PS -> PCTX : setStrategy(method)
+PS -> PCTX : processPayment(amount, details)
+PCTX --> PS : result(status, transactionId)
+
+PS -> PR : updateStatus(paymentId, result)
+PR -> DB : UPDATE payments
+DB --> PR : updated payment
+
+alt payment success
+  PS -> OR : updateStatus(orderId, paid)
+  OR -> DB : UPDATE orders
+  DB --> OR : updated order
+  PS -> QM : updateOrderStatus(orderId, paid)
+  QM -> WS : notify queue:update and queue:full
+  PS --> PC : success
+else payment failed
+  PS --> PC : failed
+end
+
+PC --> Route : HTTP response
+Route --> API : response
+API --> FE : show success/failure
+
+== Admin updates preparation status ==
+Admin -> FE : PATCH /admin/orders/{id}/status
+FE -> API : update status (preparing/ready/completed)
+API -> Route : /api/admin/orders/:id/status
+Route -> OC : updateOrderStatus()
+OC -> OS : updateOrderStatus(id, status)
+OS -> OR : updateStatus(id, status)
+OR -> DB : UPDATE orders
+DB --> OR : updated order
+OR --> OS : updated order
+OS -> QM : updateOrderStatus(id, status)
+QM -> WS : queue:update + queue:full
+WS --> Student : realtime queue/order status events
+WS --> Admin : admin:order-update
+
+@enduml

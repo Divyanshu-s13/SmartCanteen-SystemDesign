@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui';
 import type { Order } from '@/types';
 
 export default function DashboardPage() {
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const router = useRouter();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
