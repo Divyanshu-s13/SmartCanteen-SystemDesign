@@ -1,0 +1,102 @@
+%% SmartCanteen Use Case Diagram
+%% Derived from frontend pages/services and backend routes/controllers.
+
+flowchart LR
+    student[Student]
+    admin[Admin]
+    display[Queue Display Screen]
+    auto[Queue Manager System]
+
+    subgraph system[SmartCanteen System]
+        direction TB
+
+        subgraph studentOps[Student Operations]
+            direction LR
+            uc_account((Manage account))
+            uc_ordering((Place and pay order))
+            uc_tracking((Track own order))
+        end
+
+        subgraph adminOps[Admin Operations]
+            direction LR
+            uc_adminops((Admin operations))
+            uc_finance((Payment administration))
+        end
+
+        subgraph queueOps[Queue and Realtime]
+            direction LR
+            uc_queueboard((View public queue board))
+            uc_realtime((Receive realtime queue updates))
+            uc_qsync((Update queue state))
+        end
+
+        uc_signup((Sign up))
+        uc_login((Log in))
+        uc_profile((View or update profile))
+
+        uc_browse((Browse or search menu))
+        uc_cart((Manage cart))
+        uc_order((Place order))
+        uc_pay((Process payment))
+        uc_token((Generate token number))
+
+        uc_track((Track own orders))
+        uc_queuepos((View queue position))
+        uc_cancel((Cancel order))
+
+        uc_dashboard((View dashboard stats))
+        uc_menuadmin((Manage menu items))
+        uc_ordersadmin((View or filter all orders))
+        uc_status((Update order status))
+        uc_paystats((View payment stats))
+        uc_refund((Process refund))
+    end
+
+    student --> uc_account
+    student --> uc_ordering
+    student --> uc_tracking
+    student --> uc_realtime
+
+    admin --> uc_login
+    admin --> uc_adminops
+    admin --> uc_finance
+    admin --> uc_realtime
+
+    display --> uc_queueboard
+    display --> uc_realtime
+
+    auto --> uc_qsync
+    auto --> uc_realtime
+
+    uc_account -. includes .-> uc_signup
+    uc_account -. includes .-> uc_login
+    uc_account -. includes .-> uc_profile
+
+    uc_ordering -. includes .-> uc_browse
+    uc_ordering -. includes .-> uc_cart
+    uc_ordering -. includes .-> uc_order
+    uc_ordering -. includes .-> uc_pay
+    uc_order -. includes .-> uc_token
+
+    uc_tracking -. includes .-> uc_track
+    uc_tracking -. includes .-> uc_queuepos
+    uc_tracking -. includes .-> uc_cancel
+
+    uc_adminops -. includes .-> uc_dashboard
+    uc_adminops -. includes .-> uc_menuadmin
+    uc_adminops -. includes .-> uc_ordersadmin
+    uc_adminops -. includes .-> uc_status
+
+    uc_finance -. includes .-> uc_paystats
+    uc_finance -. includes .-> uc_refund
+
+    uc_order -. includes .-> uc_qsync
+    uc_pay -. includes .-> uc_qsync
+    uc_status -. includes .-> uc_qsync
+    uc_cancel -. includes .-> uc_qsync
+
+    classDef actor fill:#fff7e8,stroke:#aa6a2a,stroke-width:1px,color:#3d2a16;
+    classDef usecase fill:#f7fbff,stroke:#2f5d9b,stroke-width:1px,color:#12263f;
+
+    class student,admin,display,auto actor;
+    class uc_account,uc_ordering,uc_tracking,uc_adminops,uc_finance,uc_queueboard,uc_realtime,uc_qsync,uc_signup,uc_login,uc_profile,uc_browse,uc_cart,uc_order,uc_pay,uc_token,uc_track,uc_queuepos,uc_cancel,uc_dashboard,uc_menuadmin,uc_ordersadmin,uc_status,uc_paystats,uc_refund usecase;

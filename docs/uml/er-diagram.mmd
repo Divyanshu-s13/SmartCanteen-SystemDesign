@@ -1,0 +1,60 @@
+%% SmartCanteen ER Diagram (runtime persistence model)
+%% Source of truth: backend/src/db/models.ts + repositories + interfaces
+%% Note: database/schema.sql exists as legacy SQL reference; runtime uses MongoDB/Mongoose.
+
+ erDiagram
+    USER {
+        string id PK
+        string name
+        string email UK
+        string password
+        string role "student|admin"
+        date createdAt
+        date updatedAt
+    }
+
+    MENU_ITEM {
+        string id PK
+        string name
+        string description
+        number price
+        string category "snacks|drinks|meals"
+        string imageUrl
+        boolean isAvailable
+        date createdAt
+        date updatedAt
+    }
+
+    ORDER {
+        string id PK
+        string userId FK
+        number totalPrice
+        string status "pending|paid|preparing|ready|completed|cancelled"
+        number tokenNumber "1..999 (cyclic)"
+        date createdAt
+        date updatedAt
+    }
+
+    ORDER_ITEM {
+        string id PK
+        string orderId FK "embedded parent reference"
+        string menuItemId FK
+        number quantity
+        number price
+    }
+
+    PAYMENT {
+        string id PK
+        string orderId FK
+        number amount
+        string status "pending|success|failed|refunded"
+        string method "upi|card|wallet"
+        string transactionId
+        date createdAt
+        date updatedAt
+    }
+
+    USER ||--o{ ORDER : places
+    ORDER ||--|{ ORDER_ITEM : contains
+    MENU_ITEM ||--o{ ORDER_ITEM : referenced_by
+    ORDER ||--o{ PAYMENT : payment_attempts
