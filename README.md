@@ -48,21 +48,31 @@ A full-stack web application for college canteens to manage food ordering, digit
 
 ```
 smart-canteen/
+├── README.md
 ├── backend/
+│   ├── package.json
+│   ├── tsconfig.json
 │   └── src/
+│       ├── index.ts         # Backend entry point
 │       ├── config/          # Database and app configuration
 │       ├── controllers/     # HTTP request handlers
-│       ├── interfaces/      # TypeScript interfaces
+│       ├── db/              # Mongoose schemas/models
+│       ├── interfaces/      # TypeScript interfaces/contracts
 │       ├── middleware/      # Auth and error handling
 │       ├── models/          # OOP User classes
 │       ├── patterns/        # Design patterns (Factory, Strategy, Observer)
 │       ├── repositories/    # Data access layer
 │       ├── routes/          # API routes
 │       ├── services/        # Business logic
-│       ├── websocket/       # Socket.io handler
-│       └── index.ts         # Entry point
+│       └── websocket/       # Socket.io handler
+│
+├── docs/
+│   └── uml/                 # UML diagrams (use case, ER, sequence)
 │
 ├── frontend/
+│   ├── package.json
+│   ├── next.config.js
+│   ├── tailwind.config.js
 │   ├── app/                 # Next.js app router pages
 │   │   ├── admin/          # Admin dashboard & management
 │   │   ├── cart/           # Shopping cart
@@ -83,8 +93,10 @@ smart-canteen/
 │   ├── types/              # TypeScript types
 │   └── lib/                # Utilities
 │
-└── database/
-    └── schema.sql          # Legacy SQL schema (optional reference)
+├── database/
+│   └── schema.sql          # Legacy SQL schema (optional reference)
+├── package.json            # Root scripts (workspace-level)
+└── package-lock.json
 ```
 
 ## Setup Instructions
@@ -215,21 +227,37 @@ After running the seed script:
 ## Design Patterns Used
 
 ### 1. Factory Pattern (UserFactory)
-Creates User objects dynamically based on role (Student/Admin).
+Creates `Student` or `Admin` objects from common user data based on role.
+
+- **Where:** `backend/src/patterns/UserFactory.ts`, used in `backend/src/services/AuthService.ts`
+- **Why:** Centralizes role-based object creation and avoids repeated `if/else` role checks.
 
 ### 2. Strategy Pattern (PaymentStrategy)
-Interchangeable payment methods (UPI, Card, Wallet) without modifying client code.
+Interchangeable payment methods (UPI, Card, Wallet) selected at runtime.
+
+- **Where:** `backend/src/patterns/PaymentStrategy.ts`, used in `backend/src/services/PaymentService.ts`
+- **Why:** Each method has different validation/processing, and new methods can be added without changing service logic.
 
 ### 3. Observer Pattern (QueueObserver)
-Real-time queue updates - kitchen changes notify all connected students.
+Real-time queue updates where one subject (queue manager) notifies many observers (socket clients).
+
+- **Where:** `backend/src/patterns/QueueObserver.ts`, integrated in `backend/src/websocket/socketHandler.ts`
+- **Why:** Enables one-to-many push updates for queue and order state changes.
+
+### 4. Singleton Pattern (QueueManager + shared instances)
+Ensures a single shared instance for stateful components.
+
+- **Where (strict singleton):** `QueueManager.getInstance()` in `backend/src/patterns/QueueObserver.ts`
+- **Where (singleton-style exports):** `authService`, `orderService`, `paymentService`, repositories, `paymentContext`, `userFactory`
+- **Why:** Queue state must be globally consistent in-process, and shared service/repository instances keep wiring simple.
 
 ## SOLID Principles
 
 - **S** - Single Responsibility: Separate services (AuthService, OrderService, PaymentService)
 - **O** - Open/Closed: Add new payment methods without modifying existing code
 - **L** - Liskov Substitution: Student/Admin interchangeable as User
-- **I** - Interface Segregation: Separate interfaces for different concerns
-- **D** - Dependency Inversion: Services depend on repository interfaces
+- **I** - Interface Segregation: Separate interfaces for API contracts, repositories, queue observers, and payment strategies
+- **D** - Dependency Inversion: Services are constructed with repository dependencies and can be injected/swapped for testing
 
 ## Building for Production
 
