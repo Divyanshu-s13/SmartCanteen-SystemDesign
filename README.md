@@ -249,4 +249,4 @@ npm start
 
 ## License
 
-MIT
+MIT License
