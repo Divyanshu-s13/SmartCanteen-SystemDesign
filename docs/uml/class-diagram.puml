@@ -1,0 +1,336 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+package "Controllers" {
+  class AuthController {
+    +signup()
+    +login()
+    +getProfile()
+    +updateProfile()
+    +changePassword()
+    +verifyToken()
+  }
+
+  class MenuController {
+    +getAllItems()
+    +getByCategory()
+    +getItemById()
+    +createItem()
+    +updateItem()
+    +deleteItem()
+    +toggleAvailability()
+    +searchItems()
+    +getGroupedMenu()
+  }
+
+  class OrderController {
+    +createOrder()
+    +getOrderById()
+    +getUserOrders()
+    +getAllOrders()
+    +getActiveOrders()
+    +updateOrderStatus()
+    +cancelOrder()
+    +getDashboardStats()
+    +getCurrentQueue()
+    +getQueuePosition()
+  }
+
+  class PaymentController {
+    +processPayment()
+    +getPaymentById()
+    +getPaymentByOrderId()
+    +processRefund()
+    +getAllPayments()
+    +getPaymentStats()
+    +getPaymentMethods()
+  }
+}
+
+package "Services" {
+  class AuthService {
+    -userRepository: UserRepository
+    -jwtSecret: string
+    +register()
+    +login()
+    +verifyToken()
+    +getProfile()
+    +updateProfile()
+    +changePassword()
+  }
+
+  class MenuService {
+    -menuRepository: MenuRepository
+    +getAllItems()
+    +getAvailableItems()
+    +getItemsByCategory()
+    +getItemById()
+    +createItem()
+    +updateItem()
+    +deleteItem()
+    +toggleAvailability()
+    +searchItems()
+    +getMenuGroupedByCategory()
+  }
+
+  class OrderService {
+    -orderRepository: OrderRepository
+    -menuRepository: MenuRepository
+    +createOrder()
+    +getOrderById()
+    +getUserOrders()
+    +getAllOrders()
+    +getActiveOrders()
+    +getOrdersByStatus()
+    +updateOrderStatus()
+    +cancelOrder()
+    +getQueuePosition()
+    +getDashboardStats()
+  }
+
+  class PaymentService {
+    -paymentRepository: PaymentRepository
+    -orderRepository: OrderRepository
+    +processPayment()
+    +getPaymentById()
+    +getPaymentByOrderId()
+    +processRefund()
+    +getAllPayments()
+    +getPaymentStats()
+    +getAvailablePaymentMethods()
+  }
+}
+
+package "Repositories" {
+  interface IUserRepository {
+    +findById()
+    +findByEmail()
+    +findAll()
+    +create()
+    +update()
+    +delete()
+  }
+
+  interface IMenuRepository {
+    +findById()
+    +findAll()
+    +findByCategory()
+    +findAvailable()
+    +create()
+    +update()
+    +delete()
+    +toggleAvailability()
+  }
+
+  interface IOrderRepository {
+    +findById()
+    +findByIdWithItems()
+    +findByUserId()
+    +findByStatus()
+    +findActiveOrders()
+    +create()
+    +updateStatus()
+    +getNextTokenNumber()
+    +getTodayOrders()
+    +getOrderStats()
+  }
+
+  interface IPaymentRepository {
+    +findById()
+    +findByOrderId()
+    +findAll()
+    +create()
+    +updateStatus()
+  }
+
+  class UserRepository
+  class MenuRepository
+  class OrderRepository
+  class PaymentRepository
+}
+
+package "Domain Models" {
+  interface IUser
+
+  abstract class User {
+    #_id: string
+    #_name: string
+    #_email: string
+    #_password: string
+    #_role: UserRole
+    +getPermissions()*
+    +canAccessRoute()
+    +toJSON()
+    +validateEmail()
+    +validatePassword()
+  }
+
+  class Student {
+    -_studentId: string
+    -_department: string
+    +getPermissions()
+    +canPlaceOrder()
+    +canViewOwnOrders()
+    +canCancelOrder()
+  }
+
+  class Admin {
+    -_employeeId: string
+    -_position: string
+    +getPermissions()
+    +canManageMenu()
+    +canManageOrders()
+    +canTransitionOrderStatus()
+  }
+}
+
+package "Patterns" {
+  interface IUserFactory {
+    +createUser()
+  }
+
+  class UserFactory {
+    +createUser()
+    +createStudent()
+    +createAdmin()
+  }
+
+  interface IPaymentStrategy {
+    +processPayment()
+    +validatePaymentDetails()
+    +refundPayment()
+  }
+
+  class UPIPaymentStrategy {
+    +methodType: PaymentMethod
+    +processPayment()
+    +validatePaymentDetails()
+    +refundPayment()
+  }
+
+  class CardPaymentStrategy {
+    +methodType: PaymentMethod
+    +processPayment()
+    +validatePaymentDetails()
+    +refundPayment()
+  }
+
+  class WalletPaymentStrategy {
+    +methodType: PaymentMethod
+    +processPayment()
+    +validatePaymentDetails()
+    +refundPayment()
+  }
+
+  class PaymentContext {
+    -strategy: IPaymentStrategy
+    -strategies: Map<PaymentMethod, IPaymentStrategy>
+    +setStrategy()
+    +getCurrentMethod()
+    +processPayment()
+    +validateDetails()
+    +processRefund()
+    +getAvailableMethods()
+  }
+
+  interface IQueueObserver {
+    +id: string
+    +update()
+    +updateQueue()
+  }
+
+  interface IQueueSubject {
+    +attach()
+    +detach()
+    +notify()
+    +notifyAll()
+  }
+
+  class QueueManager {
+    -observers: Map<string, IQueueObserver>
+    -queue: Map<string, IQueueItem>
+    +getInstance()
+    +attach()
+    +detach()
+    +notify()
+    +notifyAll()
+    +addToQueue()
+    +updateOrderStatus()
+    +removeFromQueue()
+    +getQueue()
+    +getQueuePosition()
+  }
+}
+
+package "WebSocket" {
+  class SocketObserver {
+    +id: string
+    +update()
+    +updateQueue()
+  }
+
+  class WebSocketHandler {
+    -io: Server
+    -connectedClients: Map<string, SocketObserver>
+    +emitOrderUpdate()
+    +emitQueueUpdate()
+    +emitNewOrder()
+    +getConnectedCount()
+    +getIO()
+  }
+}
+
+package "Middleware" {
+  class AppError {
+    +statusCode: number
+    +errorCode: string
+    +isOperational: boolean
+  }
+}
+
+' Inheritance / implementation
+User ..|> IUser
+Student --|> User
+Admin --|> User
+
+UserFactory ..|> IUserFactory
+UPIPaymentStrategy ..|> IPaymentStrategy
+CardPaymentStrategy ..|> IPaymentStrategy
+WalletPaymentStrategy ..|> IPaymentStrategy
+
+QueueManager ..|> IQueueSubject
+SocketObserver ..|> IQueueObserver
+
+UserRepository ..|> IUserRepository
+MenuRepository ..|> IMenuRepository
+OrderRepository ..|> IOrderRepository
+PaymentRepository ..|> IPaymentRepository
+
+' Layer dependencies
+AuthController ..> AuthService
+MenuController ..> MenuService
+OrderController ..> OrderService
+OrderController ..> QueueManager
+PaymentController ..> PaymentService
+PaymentController ..> OrderService
+
+AuthService ..> UserRepository
+AuthService ..> UserFactory
+MenuService ..> MenuRepository
+OrderService ..> OrderRepository
+OrderService ..> MenuRepository
+OrderService ..> QueueManager
+PaymentService ..> PaymentRepository
+PaymentService ..> OrderRepository
+PaymentService ..> PaymentContext
+PaymentService ..> QueueManager
+
+WebSocketHandler *-- SocketObserver
+WebSocketHandler ..> QueueManager
+
+PaymentContext o-- IPaymentStrategy
+QueueManager o-- IQueueObserver
+
+@enduml
