@@ -35,11 +35,12 @@ export class WebSocketHandler {
 
   constructor(httpServer: HttpServer) {
     const defaultOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
+    const normalizeOrigin = (origin: string): string => origin.trim().replace(/\/$/, '');
     const configuredOrigins = (process.env.CORS_ORIGIN || '')
       .split(',')
-      .map((origin) => origin.trim())
+      .map((origin) => normalizeOrigin(origin))
       .filter(Boolean);
-    const allowedOrigins = Array.from(new Set([...defaultOrigins, ...configuredOrigins]));
+    const allowedOrigins = Array.from(new Set([...defaultOrigins.map(normalizeOrigin), ...configuredOrigins]));
 
     const isLocalDevOrigin = (origin: string): boolean => {
       try {
@@ -53,10 +54,12 @@ export class WebSocketHandler {
     this.io = new Server(httpServer, {
       cors: {
         origin: (origin, callback) => {
+          const normalizedOrigin = normalizeOrigin(origin ?? '');
+
           if (
             !origin
-            || allowedOrigins.includes(origin)
-            || (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(origin))
+            || allowedOrigins.includes(normalizedOrigin)
+            || (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(normalizedOrigin))
           ) {
             callback(null, true);
             return;
