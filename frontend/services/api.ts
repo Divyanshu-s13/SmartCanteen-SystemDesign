@@ -39,8 +39,37 @@ async function fetchWithAuth<T>(
       headers,
     });
 
-    const data = await response.json();
-    return data;
+    const rawBody = await response.text();
+    let parsedBody: ApiResponse<T> | null = null;
+
+    if (rawBody) {
+      try {
+        parsedBody = JSON.parse(rawBody) as ApiResponse<T>;
+      } catch {
+        // Non-JSON responses can happen on platform-level failures (e.g., HTML/text 500 pages).
+      }
+    }
+
+    if (parsedBody) {
+      return parsedBody;
+    }
+
+    if (!response.ok) {
+      const normalizedMessage = rawBody && !rawBody.trim().startsWith('<')
+        ? rawBody
+        : `Request failed with status ${response.status}`;
+
+      return {
+        success: false,
+        message: normalizedMessage,
+        error: `HTTP_${response.status}`,
+      };
+    }
+
+    return {
+      success: true,
+      message: rawBody || 'Request completed successfully',
+    };
   } catch (error) {
     console.error('API Error:', error);
     return {
