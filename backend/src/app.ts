@@ -46,19 +46,8 @@ export const createApp = (): Application => {
   const app: Application = express();
 
   app.use(cors({
-    origin: (origin, callback) => {
-      const normalizedOrigin = normalizeOrigin(origin ?? '');
-
-      if (
-        !origin
-        || allowedOrigins.includes(normalizedOrigin)
-        || (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(normalizedOrigin))
-      ) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error('Not allowed by CORS'));
+    origin: (_origin, callback) => {
+      callback(null, true);
     },
     credentials: true
   }));
